@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profil</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div id="app-container" class="hidden">
+    <div class="form-container" style="background:white; padding:20px; border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.1); margin:20px auto; max-width:700px;">
+      <h2>Modifier mon profil</h2>
+      <form id="profile-form" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="profile-fullname">Nom complet</label>
+          <input type="text" id="profile-fullname" required />
+        </div>
+        <div class="form-group">
+          <label for="profile-email">Email</label>
+          <input type="email" id="profile-email" required />
+        </div>
+        <div class="form-group">
+          <label for="profile-avatar">Photo de profil</label>
+          <input type="file" id="profile-avatar" accept="image/*" />
+        </div>
+
+        <hr style="border:none;border-top:1px solid #e4e6eb;margin:20px 0;" />
+
+        <h3 style="margin:0 0 15px 0;color:#1877f2;font-size:16px;">Changer le mot de passe</h3>
+
+        <div class="form-group">
+          <label for="profile-current-password">Mot de passe actuel</label>
+          <input type="password" id="profile-current-password" placeholder="Mot de passe actuel" />
+        </div>
+        <div class="form-group">
+          <label for="profile-new-password">Nouveau mot de passe</label>
+          <input type="password" id="profile-new-password" placeholder="Nouveau mot de passe" />
+        </div>
+        <div class="form-group">
+          <label for="profile-confirm-password">Confirmer le nouveau mot de passe</label>
+          <input type="password" id="profile-confirm-password" placeholder="Confirmer le nouveau mot de passe" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+
+      </form>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/auth.js"></script>
+</body>
+</html>
+
