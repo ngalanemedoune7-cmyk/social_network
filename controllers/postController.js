@@ -1,11 +1,11 @@
 const Post = require('../models/postModel');
 
-// Créer un post
+
 exports.createPost = async (req, res) => {
     const { content } = req.body;
-    const userId = req.session.userId; // Récupéré de la session active
+    const userId = req.session.userId; 
 
-    // L'image est optionnelle, on vérifie si Multer a enregistré un fichier
+    
     const image = req.file ? `/uploads/${req.file.filename}` : null;
 
     if (!content && !image) {
@@ -21,7 +21,7 @@ exports.createPost = async (req, res) => {
     }
 };
 
-// Récupérer le fil d'actualité (Modifié pour inclure la session de l'utilisateur pour les likes)
+
 exports.getTimeline = async (req, res) => {
     try {
         const posts = await Post.getAllWithAuthors(req.session.userId);
@@ -32,7 +32,7 @@ exports.getTimeline = async (req, res) => {
     }
 };
 
-// Supprimer un post
+
 exports.deletePost = async (req, res) => {
     const postId = req.params.id;
     const userId = req.session.userId;
@@ -43,7 +43,7 @@ exports.deletePost = async (req, res) => {
             return res.status(404).json({ error: "Publication introuvable." });
         }
 
-        // Sécurité : Seul l'auteur peut supprimer son post
+        
         if (post.user_id !== userId) {
             return res.status(403).json({ error: "Vous n'êtes pas autorisé à supprimer cette publication." });
         }
@@ -54,9 +54,9 @@ exports.deletePost = async (req, res) => {
         console.error(error);
         return res.status(500).json({ error: "Erreur lors de la suppression." });
     }
-}; // <-- L'accolade se ferme bien ici maintenant !
+}; 
 
-// Modifier un post
+
 exports.updatePost = async (req, res) => {
     const postId = req.params.id;
     const userId = req.session.userId;
@@ -72,7 +72,7 @@ exports.updatePost = async (req, res) => {
             return res.status(404).json({ error: "Publication introuvable." });
         }
 
-        // Sécurité : Vérification de l'auteur
+        
         if (post.user_id !== userId) {
             return res.status(403).json({ error: "Vous n'êtes pas autorisé à modifier cette publication." });
         }

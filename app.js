@@ -7,17 +7,17 @@ require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server); // Initialisation de io ici
+const io = socketIo(server); 
 
-// Importation et exécution du fichier socket
+
 const messageSocket = require('./sockets/messageSocket');
 messageSocket.initSocket(io);
 
-// Middlewares
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Sessions
+
 app.use(session({
     secret: process.env.SESSION_SECRET || 'secret_temporaire',
     resave: false,
@@ -25,10 +25,10 @@ app.use(session({
     cookie: { secure: false, maxAge: 1000 * 60 * 60 * 24 }
 }));
 
-// Fichiers statiques
+
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Routes
+
 const authRoutes = require('./routes/authRoutes');
 const postRoutes = require('./routes/postRoutes');
 const friendRoutes = require('./routes/friendRoutes');
@@ -52,7 +52,7 @@ app.get('/', (req, res) => {
     res.redirect('/posts/timeline');
 });
 
-// Lancement du serveur
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Serveur démarré sur http://localhost:${PORT}`);

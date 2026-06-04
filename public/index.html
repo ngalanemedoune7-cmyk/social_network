@@ -55,6 +55,7 @@
             <h1 style="margin: 0;">Social Network</h1>
             <div style="display: flex; align-items: center; gap: 15px;">
                 <button id="search-btn" class="btn" style="background: #e4e6eb; color: #1877f2; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold;">🔍 Recherche</button>
+                <button id="profile-btn" class="btn" style="background: #e4e6eb; color: #1877f2; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold;">👤 Profil</button>
                 <button id="admin-btn" class="btn hidden-admin" style="background: #e4e6eb; color: #1877f2; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold; display: none;">⚙️ Admin</button>
                 <span id="user-display-name"></span>
                 <button id="logout-btn" class="btn btn-danger" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Déconnexion</button>
@@ -94,7 +95,7 @@
                     <button id="mark-all-read" class="btn btn-secondary" style="margin-top:12px; width:100%;">Tout marquer lu</button>
                 </div>
 
-                <!-- Section des utilisateurs en ligne -->
+                
                 <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-top: 20px;">
                     <h3 style="margin-top: 0; margin-bottom: 15px; color: #1877f2;">👥 Utilisateurs en ligne</h3>
                     <div id="online-users-list" style="max-height: 400px; overflow-y: auto;">
@@ -113,7 +114,7 @@
         <input type="text" id="chat-input" class="chat-input" placeholder="Écrire un message...">
     </div>
 
-    <!-- Section Profil -->
+    
     <div id="profile-modal" class="modal hidden">
         <div class="modal-content">
             <span class="close-modal" onclick="document.getElementById('profile-modal').classList.add('hidden')">&times;</span>
@@ -148,7 +149,7 @@
         </div>
     </div>
 
-    <!-- Section Recherche -->
+    
     <div id="search-modal" class="modal hidden">
         <div class="modal-content">
             <span class="close-modal" onclick="document.getElementById('search-modal').classList.add('hidden')">&times;</span>
@@ -161,7 +162,7 @@
         </div>
     </div>
 
-    <!-- Section Administration -->
+    
     <div id="admin-modal" class="modal hidden">
         <div class="modal-content admin-content">
             <span class="close-modal" onclick="document.getElementById('admin-modal').classList.add('hidden')">&times;</span>
@@ -173,18 +174,19 @@
                 <button class="tab-btn" onclick="switchAdminTab('posts')">Modération</button>
             </div>
 
-            <!-- Statistiques -->
+            
             <div id="statistics-tab" class="tab-content">
                 <div class="stats-grid" id="stats-grid"></div>
             </div>
 
-            <!-- Gestion Utilisateurs -->
+            
             <div id="users-tab" class="tab-content hidden">
                 <table class="admin-table">
                     <thead>
                         <tr>
                             <th>Nom</th>
                             <th>Email</th>
+                            <th>Rôle</th>
                             <th>Inscription</th>
                             <th>Action</th>
                         </tr>
@@ -193,32 +195,12 @@
                 </table>
             </div>
 
-            <!-- Modération Posts -->
+            
             <div id="posts-tab" class="tab-content hidden">
                 <div id="moderation-container"></div>
             </div>
         </div>
     </div>
-    <div id="profile-container" class="hidden">
-    <div class="auth-box">
-        <h2>Modifier mon profil</h2>
-        <form id="update-profile-form">
-            <div class="form-group">
-                <label>Nouvelle photo de profil</label>
-                <input type="file" id="new-avatar" accept="image/*">
-            </div>
-            <div class="form-group">
-                <label>Nom complet</label>
-                <input type="text" id="edit-fullname" placeholder="Ton nom">
-            </div>
-            <div class="form-group">
-                <label>Bio</label>
-                <textarea id="edit-bio" placeholder="Parle un peu de toi..."></textarea>
-            </div>
-            <button type="submit" class="btn">Enregistrer</button>
-        </form>
-    </div>
-</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/auth.js"></script>

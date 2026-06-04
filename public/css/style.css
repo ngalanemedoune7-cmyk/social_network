@@ -102,7 +102,7 @@ h2 {
     display: none !important;
 }
 
-/* Header de l'application */
+
 .main-header {
     display: flex;
     justify-content: space-between;
@@ -120,7 +120,7 @@ h2 {
     gap: 15px;
 }
 
-/* Responsivité basique */
+
 @media (max-width: 768px) {
     .main-header {
         flex-direction: column;
@@ -129,7 +129,7 @@ h2 {
     }
 }
 
-/* Styles du Fil d'actualité */
+
 .main-content {
     max-width: 700px;
     margin: 0 auto;
@@ -190,7 +190,7 @@ h2 {
     padding: 8px 20px;
 }
 
-/* Carte de Publication */
+
 .post-card {
     background: white;
     padding: 20px;
@@ -269,7 +269,7 @@ h2 {
 .btn-edit-post:hover {
     text-decoration: underline;
 }
-/* Ajoute le point devant chat-box */
+
 .chat-box { 
     position: fixed; 
     bottom: 0; 
@@ -279,11 +279,11 @@ h2 {
     border: 1px solid #ddd; 
     border-radius: 8px 8px 0 0; 
     box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-    z-index: 1000; /* Assure qu'il soit au-dessus de tout */
-    display: none; /* Caché par défaut */
+    z-index: 1000; 
+    display: none; 
 }
 
-/* Ajout pour le contenu interne du chat */
+
 .chat-header {
     background: #1877f2;
     color: white;
@@ -310,7 +310,7 @@ h2 {
     box-sizing: border-box;
 }
 
-/* Styles pour les messages individuels */
+
 .message-item {
     padding: 8px;
     margin-bottom: 5px;
@@ -329,7 +329,7 @@ h2 {
     text-align: left;
 }
 
-/* Styles pour les utilisateurs en ligne */
+
 .online-user {
     display: flex;
     align-items: center;
@@ -403,7 +403,7 @@ h2 {
     margin-top: 6px;
 }
 
-/* MODALES RECHERCHE ET ADMIN */
+
 .modal {
     position: fixed;
     top: 0;
@@ -448,7 +448,7 @@ h2 {
     color: #000;
 }
 
-/* RECHERCHE */
+
 .search-container {
     display: flex;
     gap: 10px;
@@ -514,7 +514,7 @@ h2 {
     color: #65676b;
 }
 
-/* ADMINISTRATION */
+
 .admin-tabs {
     display: flex;
     gap: 10px;
@@ -550,7 +550,7 @@ h2 {
     display: none !important;
 }
 
-/* STATISTIQUES */
+
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -601,7 +601,7 @@ h2 {
     opacity: 0.9;
 }
 
-/* TABLEAU ADMIN */
+
 .admin-table {
     width: 100%;
     border-collapse: collapse;
@@ -644,7 +644,7 @@ h2 {
 .btn-delete-user:hover {
     background: #c82333 !important;
 }
-/* Ajoute ceci dans ton style.css */
+
 .message-item { margin: 5px; padding: 8px; border-radius: 10px; }
 .own-message { background: #d1e7dd; text-align: right; margin-left: 50px; }
 .other-message { background: #f8d7da; text-align: left; margin-right: 50px; }

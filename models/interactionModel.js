@@ -1,7 +1,7 @@
 const db = require('../config/db');
 
 const Interaction = {
-    // --- LIKES ---
+    
     checkLike: async (postId, userId) => {
         const sql = 'SELECT * FROM likes WHERE post_id = ? AND user_id = ?';
         const [rows] = await db.execute(sql, [postId, userId]);
@@ -14,7 +14,7 @@ const Interaction = {
         await db.execute('DELETE FROM likes WHERE post_id = ? AND user_id = ?', [postId, userId]);
     },
 
-    // --- COMMENTAIRES ---
+    
     addComment: async (postId, userId, content) => {
         const [result] = await db.execute('INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)', [postId, userId, content]);
         return result.insertId;
@@ -39,7 +39,7 @@ const Interaction = {
         return result.affectedRows > 0;
     },
 
-    // --- PARTAGES ---
+    
     addShare: async (postId, userId) => {
         await db.execute('INSERT INTO shares (post_id, user_id) VALUES (?, ?)', [postId, userId]);
     }

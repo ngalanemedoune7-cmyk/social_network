@@ -2,7 +2,7 @@ const Friend = require('../models/friendModel');
 const Notification = require('../models/notificationModel');
 const notificationSocket = require('../sockets/messageSocket');
 
-// Envoyer une demande
+
 exports.sendFriendRequest = async (req, res) => {
     const senderId = req.session.userId;
     const receiverId = parseInt(req.params.userId);
@@ -37,7 +37,7 @@ exports.sendFriendRequest = async (req, res) => {
     }
 };
 
-// Accepter une demande
+
 exports.acceptFriendRequest = async (req, res) => {
     const currentUserId = req.session.userId;
     const targetUserId = req.params.userId;
@@ -53,7 +53,7 @@ exports.acceptFriendRequest = async (req, res) => {
     }
 };
 
-// Refuser ou Supprimer un ami
+
 exports.removeFriend = async (req, res) => {
     const currentUserId = req.session.userId;
     const targetUserId = req.params.userId;
@@ -69,7 +69,7 @@ exports.removeFriend = async (req, res) => {
     }
 };
 
-// Voir ses amis et ses demandes en attente
+
 exports.getFriendsDashboard = async (req, res) => {
     const userId = req.session.userId;
     try {

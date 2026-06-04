@@ -2,7 +2,7 @@ const db = require('../config/db');
 
 const Admin = {
     getAllUsers: async () => {
-        const sql = 'SELECT id, fullname, email, profile_picture, created_at FROM users ORDER BY created_at DESC';
+        const sql = 'SELECT id, fullname, email, profile_picture, role, created_at FROM users ORDER BY created_at DESC';
         const [rows] = await db.execute(sql);
         return rows;
     },
@@ -16,6 +16,12 @@ const Admin = {
     deletePost: async (postId) => {
         const sql = 'DELETE FROM posts WHERE id = ?';
         const [result] = await db.execute(sql, [postId]);
+        return result.affectedRows > 0;
+    },
+
+    updateUserRole: async (userId, role) => {
+        const sql = 'UPDATE users SET role = ? WHERE id = ?';
+        const [result] = await db.execute(sql, [role, userId]);
         return result.affectedRows > 0;
     },
 

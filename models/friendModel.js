@@ -1,15 +1,15 @@
 const db = require('../config/db');
 
 const Friend = {
-    // Envoyer une demande d'ami
+    
     sendRequest: async (senderId, receiverId) => {
-        // user_id_1 sera l'expéditeur, user_id_2 le destinataire
+        
         const sql = 'INSERT INTO friends (user_id_1, user_id_2, status) VALUES (?, ?, "pending")';
         const [result] = await db.execute(sql, [senderId, receiverId]);
         return result.insertId;
     },
 
-    // Vérifier s'il existe déjà une relation
+    
     getRelation: async (user1, user2) => {
         const sql = `
             SELECT * FROM friends 
@@ -20,7 +20,7 @@ const Friend = {
         return rows[0];
     },
 
-    // Accepter une demande d'ami
+    
     acceptRequest: async (user1, user2) => {
         const sql = `
             UPDATE friends SET status = "accepted" 
@@ -31,7 +31,7 @@ const Friend = {
         return result.affectedRows > 0;
     },
 
-    // Refuser ou Supprimer une relation d'ami
+    
     deleteRelation: async (user1, user2) => {
         const sql = `
             DELETE FROM friends 
@@ -42,7 +42,7 @@ const Friend = {
         return result.affectedRows > 0;
     },
 
-    // Récupérer la liste des amis acceptés
+    
     getFriendsList: async (userId) => {
         const sql = `
             SELECT users.id, users.fullname, users.profile_picture 
@@ -56,7 +56,7 @@ const Friend = {
         return rows;
     },
 
-    // Récupérer les demandes d'amis en attente reçues (où l'utilisateur actuel est le destinataire user_id_2)
+    
     getPendingRequests: async (userId) => {
         const sql = `
             SELECT f.id as friendship_id, users.id as user_id, users.fullname, users.profile_picture

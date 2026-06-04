@@ -1,4 +1,4 @@
-// RECHERCHE
+
 document.addEventListener('DOMContentLoaded', () => {
     const searchBtn = document.getElementById('search-btn');
     if (searchBtn) {
@@ -40,11 +40,11 @@ async function performSearch() {
     resultsContainer.innerHTML = '<p>Recherche en cours...</p>';
 
     try {
-        // Rechercher les utilisateurs
+        
         const usersRes = await fetch(`/api/search/users?q=${encodeURIComponent(query)}`);
         const users = await usersRes.json();
 
-        // Rechercher les publications
+        
         const postsRes = await fetch(`/api/search/posts?q=${encodeURIComponent(query)}`);
         const posts = await postsRes.json();
 
@@ -68,7 +68,7 @@ async function performSearch() {
                     </div>
                 `;
                 userEl.addEventListener('click', () => {
-                    // Ouvrir le chat avec cet utilisateur
+                    
                     if (window.openChatWithFriend) {
                         window.openChatWithFriend(user.id, user.fullname);
                     }
@@ -96,7 +96,7 @@ async function performSearch() {
                     </div>
                 `;
                 postEl.addEventListener('click', () => {
-                    // Scroller vers la publication
+                    
                     document.getElementById('search-modal').classList.add('hidden');
                 });
                 resultsContainer.appendChild(postEl);
@@ -112,9 +112,9 @@ async function performSearch() {
     }
 }
 
-// ADMINISTRATION
+
 function switchAdminTab(tabName) {
-    // Masquer tous les onglets
+    
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.add('hidden');
     });
@@ -122,16 +122,16 @@ function switchAdminTab(tabName) {
         btn.classList.remove('active');
     });
 
-    // Afficher l'onglet sélectionné
+    
     const tabElement = document.getElementById(`${tabName}-tab`);
     if (tabElement) {
         tabElement.classList.remove('hidden');
     }
 
-    // Marquer le bouton comme actif
+    
     event.target.classList.add('active');
 
-    // Charger les données appropriées
+    
     if (tabName === 'users') {
         loadAdminUsers();
     }
@@ -189,8 +189,10 @@ async function loadAdminUsers() {
             row.innerHTML = `
                 <td>${user.fullname}</td>
                 <td>${user.email}</td>
+                <td>${user.role || 'user'}</td>
                 <td>${new Date(user.created_at).toLocaleDateString('fr-FR')}</td>
                 <td>
+                    ${user.role !== 'admin' ? `<button class="btn-promote-user" onclick="setUserRole(${user.id}, 'admin', '${user.fullname}')">Promouvoir</button>` : '<span style="color:#1877f2;font-weight:600;">Admin</span>'}
                     <button class="btn-delete-user" onclick="deleteAdminUser(${user.id}, '${user.fullname}')">Supprimer</button>
                 </td>
             `;
@@ -224,10 +226,39 @@ async function deleteAdminUser(userId, userName) {
     }
 }
 
-// Afficher le bouton admin uniquement pour l'admin
-function checkAdminStatus(userId) {
+async function setUserRole(userId, role, userName) {
+    if (!confirm(`Confirmer la promotion de ${userName} en administrateur ?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/admin/users/${userId}/role`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role })
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Erreur lors de la promotion');
+        }
+
+        alert('Utilisateur promu administrateur avec succès.');
+        loadAdminUsers();
+    } catch (error) {
+        console.error('Erreur lors de la promotion:', error);
+        alert(error.message);
+    }
+}
+
+
+function checkAdminStatus(user) {
     const adminBtn = document.getElementById('admin-btn');
-    if (adminBtn && userId === 1) {
-        adminBtn.style.display = 'block';
+    if (adminBtn) {
+        if (user && user.role === 'admin') {
+            adminBtn.style.display = 'block';
+        } else {
+            adminBtn.style.display = 'none';
+        }
     }
 }

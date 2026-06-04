@@ -42,8 +42,17 @@ function initSocket(socketIo) {
 
                 io.to(`user_${receiverId}`).emit('receive_private_message', {
                     senderId,
+                    receiverId,
                     message: text,
                     timestamp: new Date().toISOString()
+                });
+
+                io.to(`user_${senderId}`).emit('receive_private_message', {
+                    senderId,
+                    receiverId,
+                    message: text,
+                    timestamp: new Date().toISOString(),
+                    self: true
                 });
 
                 notifyUser(receiverId, {

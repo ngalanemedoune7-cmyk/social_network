@@ -36,7 +36,7 @@ exports.toggleLike = async (req, res) => {
     }
 };
 
-// Ajouter un commentaire
+
 exports.commentPost = async (req, res) => {
     const postId = req.params.postId;
     const userId = req.session.userId;
@@ -70,7 +70,7 @@ exports.commentPost = async (req, res) => {
     }
 };
 
-// Récupérer les commentaires d'un post
+
 exports.getComments = async (req, res) => {
     try {
         const comments = await Interaction.getCommentsByPost(req.params.postId);
@@ -81,7 +81,7 @@ exports.getComments = async (req, res) => {
     }
 };
 
-// Supprimer son propre commentaire
+
 exports.deleteComment = async (req, res) => {
     const commentId = req.params.commentId;
     const userId = req.session.userId;
@@ -89,7 +89,7 @@ exports.deleteComment = async (req, res) => {
         const comment = await Interaction.findCommentById(commentId);
         if (!comment) return res.status(404).json({ error: 'Commentaire introuvable.' });
         
-        // Sécurité : Seul l'auteur du commentaire peut le supprimer
+        
         if (comment.user_id !== userId) {
             return res.status(403).json({ error: 'Vous ne pouvez supprimer que vos commentaires.' });
         }
@@ -102,7 +102,7 @@ exports.deleteComment = async (req, res) => {
     }
 };
 
-// Partager une publication
+
 exports.sharePost = async (req, res) => {
     const postId = req.params.postId;
     const userId = req.session.userId;

@@ -11,7 +11,7 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
-// Utilisation des Promises pour pouvoir utiliser async/await dans nos modèles
+
 const promisePool = pool.promise();
 
 const createNotificationsTable = `
@@ -28,8 +28,17 @@ CREATE TABLE IF NOT EXISTS notifications (
 ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4;
 `;
 
+const addRoleColumn = `
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS role ENUM('user','admin') NOT NULL DEFAULT 'user';
+`;
+
 promisePool.query(createNotificationsTable).catch((error) => {
     console.error('Erreur création table notifications :', error);
+});
+
+promisePool.query(addRoleColumn).catch((error) => {
+    console.error('Erreur ajout colonne role :', error);
 });
 
 module.exports = promisePool;

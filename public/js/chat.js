@@ -3,13 +3,25 @@ window.socket = socket;
 let currentUserId = null;
 let selectedFriendId = null;
 
+socket.on('connect', () => {
+    if (currentUserId) {
+        socket.emit('register_user', Number(currentUserId));
+    }
+});
+
+socket.on('connect_error', (err) => {
+    console.error('Socket.IO connection error:', err);
+});
+
 async function getCurrentUser() {
     try {
         const response = await fetch('/api/auth/me');
         if (response.ok) {
             const user = await response.json();
             currentUserId = user.id;
-            socket.emit('register_user', Number(currentUserId));
+            if (currentUserId) {
+                socket.emit('register_user', Number(currentUserId));
+            }
         }
     } catch (err) {
         console.error('Erreur lors de la récupération de l\'utilisateur:', err);
@@ -57,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     socket.on('receive_private_message', (data) => {
+        if (!data || data.self) return;
         if (chatBox) chatBox.style.display = 'block';
         const div = document.createElement('div');
         div.className = 'message-item other-message';

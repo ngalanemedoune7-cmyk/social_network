@@ -21,6 +21,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const notificationCount = document.getElementById('notification-count');
     const notificationList = document.getElementById('notification-list');
     const markAllReadBtn = document.getElementById('mark-all-read');
+    const profileBtn = document.getElementById('profile-btn');
+    const profileModal = document.getElementById('profile-modal');
+    const profileForm = document.getElementById('profile-form');
+    const profileFullname = document.getElementById('profile-fullname');
+    const profileEmail = document.getElementById('profile-email');
+    const profileAvatarInput = document.getElementById('profile-avatar');
+    const profileCurrentPassword = document.getElementById('profile-current-password');
+    const profileNewPassword = document.getElementById('profile-new-password');
+    const profileConfirmPassword = document.getElementById('profile-confirm-password');
 
     document.getElementById('show-register').addEventListener('click', () => {
         loginForm.parentElement.classList.add('hidden');
@@ -97,6 +106,56 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    if (profileBtn) {
+        profileBtn.addEventListener('click', () => {
+            if (!currentUser) return;
+            profileFullname.value = currentUser.fullname || '';
+            profileEmail.value = currentUser.email || '';
+            profileCurrentPassword.value = '';
+            profileNewPassword.value = '';
+            profileConfirmPassword.value = '';
+            profileAvatarInput.value = '';
+            profileModal.classList.remove('hidden');
+        });
+    }
+
+    if (profileForm) {
+        profileForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fullname = profileFullname.value.trim();
+            const email = profileEmail.value.trim();
+            const currentPassword = profileCurrentPassword.value;
+            const newPassword = profileNewPassword.value;
+            const confirmPassword = profileConfirmPassword.value;
+            const avatarFile = profileAvatarInput.files[0];
+
+            if (!fullname || !email) {
+                alert('Le nom et l\'email sont obligatoires.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('fullname', fullname);
+            formData.append('email', email);
+            if (currentPassword) formData.append('currentPassword', currentPassword);
+            if (newPassword) formData.append('newPassword', newPassword);
+            if (confirmPassword) formData.append('confirmPassword', confirmPassword);
+            if (avatarFile) formData.append('profile_picture', avatarFile);
+
+            try {
+                const res = await fetch('/api/auth/profile', { method: 'PUT', body: formData });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Impossible de mettre à jour le profil');
+                alert(data.message);
+                currentUser = data.user;
+                showApp(currentUser);
+                profileModal.classList.add('hidden');
+            } catch (err) {
+                alert(err.message);
+            }
+        });
+    }
+
     async function checkUserSession() {
         try {
             const res = await fetch('/api/auth/check');
@@ -122,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadTimeline();
         loadFriendsDashboard();
         initializeNotifications();
-        checkAdminStatus(user.id);
+        checkAdminStatus(user);
     }
 
     function hideApp() {
