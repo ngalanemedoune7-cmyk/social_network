@@ -1,2 +1,5 @@
 "node_modules/" 
 .env
+server-ui.log
+server-ui.err.log
+public/uploads/
