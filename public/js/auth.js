@@ -1,57 +1,79 @@
 let currentUser = null;
 let notificationSocketInitialized = false;
+let timelinePostsCache = [];
+let friendIdsCache = new Set();
+let activeFeedFilter = 'all';
 
-window.addEventListener('DOMContentLoaded', async () => {
-    try {
-        const res = await fetch('/api/auth/check');
-        const data = await res.json();
-        if (data.loggedIn) window.location.href = '/index.html';
-    } catch (e) {}
+const $ = (selector) => document.querySelector(selector);
+const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+}[char]));
 
-});
+const avatarSrc = (path) => {
+    if (!path) return '/images/default-avatar.svg';
+    return path.startsWith('/uploads') || path.startsWith('/images') ? path : `/uploads/${path}`;
+};
 
 document.addEventListener('DOMContentLoaded', () => {
-    const loginForm = document.getElementById('login-form');
-    const registerForm = document.getElementById('register-form');
-    const authContainer = document.getElementById('auth-container');
-    const appContainer = document.getElementById('app-container');
-    const registerBox = document.getElementById('register-box');
-    const userDisplayName = document.getElementById('user-display-name');
-    const logoutBtn = document.getElementById('logout-btn');
-    const notificationCount = document.getElementById('notification-count');
-    const notificationList = document.getElementById('notification-list');
-    const markAllReadBtn = document.getElementById('mark-all-read');
-    const profileBtn = document.getElementById('profile-btn');
-    const profileModal = document.getElementById('profile-modal');
-    const profileForm = document.getElementById('profile-form');
-    const profileFullname = document.getElementById('profile-fullname');
-    const profileEmail = document.getElementById('profile-email');
-    const profileAvatarInput = document.getElementById('profile-avatar');
-    const profileCurrentPassword = document.getElementById('profile-current-password');
-    const profileNewPassword = document.getElementById('profile-new-password');
-    const profileConfirmPassword = document.getElementById('profile-confirm-password');
+    const loginForm = $('#login-form');
+    const registerForm = $('#register-form');
+    const authContainer = $('#auth-container');
+    const appContainer = $('#app-container');
+    const userDisplayName = $('#user-display-name');
+    const logoutBtn = $('#logout-btn');
+    const profileBtn = $('#profile-btn');
+    const profileModal = $('#profile-modal');
+    const profileForm = $('#profile-form');
+    const postImageInput = $('#post-image');
+    const fileChosenSpan = $('#file-chosen');
+    const timelineContainer = $('#timeline-container');
+    const markAllReadBtn = $('#mark-all-read');
+    const themeToggle = $('#theme-toggle');
+    const settingsThemeToggle = $('#settings-theme-toggle');
+    const settingsBtn = $('#settings-btn');
+    const settingsModal = $('#settings-modal');
+    const quickSearch = $('#quick-search');
+    const composerAvatar = $('#composer-avatar');
+    const profilePreviewAvatar = $('#profile-preview-avatar');
+    const feedFilter = document.querySelector('.feed-filter');
 
-    document.getElementById('show-register').addEventListener('click', () => {
-        loginForm.parentElement.classList.add('hidden');
-        registerBox.classList.remove('hidden');
-    });
-
-    document.getElementById('show-login').addEventListener('click', () => {
-        registerBox.classList.add('hidden');
-        loginForm.parentElement.classList.remove('hidden');
-    });
-
+    applyTheme(localStorage.getItem('theme') || 'light');
+    wireNavigation();
     checkUserSession();
 
-    registerForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const fullname = document.getElementById('reg-fullname').value.trim();
-        const email = document.getElementById('reg-email').value.trim();
-        const password = document.getElementById('reg-password').value;
-        const avatarFile = document.getElementById('reg-avatar').files[0];
+    $('#show-register').addEventListener('click', () => {
+        loginForm.classList.add('hidden');
+        registerForm.classList.remove('hidden');
+    });
+
+    $('#show-login').addEventListener('click', () => {
+        registerForm.classList.add('hidden');
+        loginForm.classList.remove('hidden');
+    });
+
+    document.querySelectorAll('[data-close]').forEach((button) => {
+        button.addEventListener('click', () => $(`#${button.dataset.close}`).classList.add('hidden'));
+    });
+
+    [themeToggle, settingsThemeToggle].filter(Boolean).forEach((button) => {
+        button.addEventListener('click', () => {
+            applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+        });
+    });
+
+    registerForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const fullname = $('#reg-fullname').value.trim();
+        const email = $('#reg-email').value.trim();
+        const password = $('#reg-password').value;
+        const avatarFile = $('#reg-avatar').files[0];
 
         if (password.length < 4) {
-            alert('Le mot de passe doit contenir au moins 4 caractères.');
+            alert('Le mot de passe doit contenir au moins 4 caracteres.');
             return;
         }
 
@@ -62,554 +84,482 @@ document.addEventListener('DOMContentLoaded', () => {
         if (avatarFile) formData.append('profile_picture', avatarFile);
 
         try {
-            const res = await fetch('/api/auth/register', { method: 'POST', body: formData });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Une erreur est survenue');
+            const response = await fetch('/api/auth/register', { method: 'POST', body: formData });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Inscription impossible.');
             alert(data.message);
             registerForm.reset();
-            registerBox.classList.add('hidden');
-            loginForm.parentElement.classList.remove('hidden');
-        } catch (err) {
-            alert(err.message);
+            registerForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+        } catch (error) {
+            alert(error.message);
         }
     });
 
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('login-email').value.trim();
-        const password = document.getElementById('login-password').value;
-
+    loginForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
         try {
-            const res = await fetch('/api/auth/login', {
+            const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({
+                    email: $('#login-email').value.trim(),
+                    password: $('#login-password').value
+                })
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Identifiants incorrects');
-
-            window.socket = window.socket || io();
-            window.socket.emit('register_user', Number(data.user.id));
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Identifiants incorrects.');
+            connectSocket(data.user.id);
             showApp(data.user);
-        } catch (err) {
-            alert(err.message);
+        } catch (error) {
+            alert(error.message);
         }
     });
 
-    logoutBtn.addEventListener('submit', (e) => e.preventDefault());
     logoutBtn.addEventListener('click', async () => {
-        try {
-            const res = await fetch('/api/auth/logout', { method: 'POST' });
-            if (res.ok) hideApp();
-        } catch (err) {
-            console.error('Erreur lors de la déconnexion', err);
+        const response = await fetch('/api/auth/logout', { method: 'POST' });
+        if (response.ok) {
+            currentUser = null;
+            authContainer.classList.remove('hidden');
+            appContainer.classList.add('hidden');
         }
     });
 
-    if (profileBtn) {
-        profileBtn.addEventListener('click', () => {
-            if (!currentUser) return;
-            profileFullname.value = currentUser.fullname || '';
-            profileEmail.value = currentUser.email || '';
-            profileCurrentPassword.value = '';
-            profileNewPassword.value = '';
-            profileConfirmPassword.value = '';
-            profileAvatarInput.value = '';
-            profileModal.classList.remove('hidden');
+    profileBtn.addEventListener('click', () => {
+        if (!currentUser) return;
+        $('#profile-fullname').value = currentUser.fullname || '';
+        $('#profile-email').value = currentUser.email || '';
+        $('#profile-current-password').value = '';
+        $('#profile-new-password').value = '';
+        $('#profile-confirm-password').value = '';
+        $('#profile-avatar').value = '';
+        if (profilePreviewAvatar) profilePreviewAvatar.src = avatarSrc(currentUser.profile_picture);
+        profileModal.classList.remove('hidden');
+    });
+
+    profileForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const newPassword = $('#profile-new-password').value;
+        const confirmPassword = $('#profile-confirm-password').value;
+        if (newPassword && newPassword !== confirmPassword) {
+            alert('Les mots de passe ne correspondent pas.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('fullname', $('#profile-fullname').value.trim());
+        formData.append('email', $('#profile-email').value.trim());
+        formData.append('currentPassword', $('#profile-current-password').value);
+        formData.append('newPassword', newPassword);
+        formData.append('confirmPassword', confirmPassword);
+        if ($('#profile-avatar').files[0]) formData.append('profile_picture', $('#profile-avatar').files[0]);
+
+        try {
+            const response = await fetch('/api/auth/profile', { method: 'PUT', body: formData });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Mise a jour impossible.');
+            currentUser = data.user;
+            showApp(currentUser);
+            profileModal.classList.add('hidden');
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+
+    postImageInput.addEventListener('change', () => {
+        fileChosenSpan.textContent = postImageInput.files[0] ? postImageInput.files[0].name : 'Aucun fichier choisi';
+    });
+
+    $('#create-post-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const content = $('#post-content').value.trim();
+        const imageFile = postImageInput.files[0];
+        if (!content && !imageFile) {
+            alert('Votre publication ne peut pas etre vide.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('content', content);
+        if (imageFile) formData.append('image', imageFile);
+
+        try {
+            const response = await fetch('/api/posts/create', { method: 'POST', body: formData });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Publication impossible.');
+            event.target.reset();
+            fileChosenSpan.textContent = 'Aucun fichier choisi';
+            await loadTimeline();
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+
+    markAllReadBtn.addEventListener('click', async () => {
+        const response = await fetch('/api/notifications/read-all', { method: 'PUT' });
+        if (response.ok) await loadNotifications();
+    });
+
+    if (quickSearch) {
+        quickSearch.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' || !quickSearch.value.trim()) return;
+            event.preventDefault();
+            $('#searchInput').value = quickSearch.value.trim();
+            $('#search-modal').classList.remove('hidden');
+            $('#searchBtn').click();
         });
     }
 
-    if (profileForm) {
-        profileForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const fullname = profileFullname.value.trim();
-            const email = profileEmail.value.trim();
-            const currentPassword = profileCurrentPassword.value;
-            const newPassword = profileNewPassword.value;
-            const confirmPassword = profileConfirmPassword.value;
-            const avatarFile = profileAvatarInput.files[0];
-
-            if (!fullname || !email) {
-                alert('Le nom et l\'email sont obligatoires.');
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('fullname', fullname);
-            formData.append('email', email);
-            if (currentPassword) formData.append('currentPassword', currentPassword);
-            if (newPassword) formData.append('newPassword', newPassword);
-            if (confirmPassword) formData.append('confirmPassword', confirmPassword);
-            if (avatarFile) formData.append('profile_picture', avatarFile);
-
-            try {
-                const res = await fetch('/api/auth/profile', { method: 'PUT', body: formData });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Impossible de mettre à jour le profil');
-                alert(data.message);
-                currentUser = data.user;
-                showApp(currentUser);
-                profileModal.classList.add('hidden');
-            } catch (err) {
-                alert(err.message);
-            }
+    if (feedFilter) {
+        feedFilter.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-feed-filter]');
+            if (!button) return;
+            activeFeedFilter = button.dataset.feedFilter;
+            feedFilter.querySelectorAll('.chip').forEach((chip) => {
+                chip.classList.toggle('active', chip === button);
+            });
+            renderTimelineFromCache();
         });
     }
 
     async function checkUserSession() {
         try {
-            const res = await fetch('/api/auth/check');
-            const data = await res.json();
+            const response = await fetch('/api/auth/check');
+            const data = await response.json();
             if (data.loggedIn) {
-                window.socket = window.socket || io();
-                window.socket.emit('register_user', data.user.id);
+                connectSocket(data.user.id);
                 showApp(data.user);
-            } else {
-                hideApp();
             }
-        } catch (err) {
-            hideApp();
+        } catch (error) {
+            authContainer.classList.remove('hidden');
         }
+    }
+
+    function connectSocket(userId) {
+        window.socket = window.socket || io();
+        window.socket.emit('register_user', Number(userId));
     }
 
     function showApp(user) {
         currentUser = user;
-        const avatarPath = user.profile_picture.startsWith('/uploads') ? user.profile_picture : `/uploads/${user.profile_picture}`;
-        userDisplayName.innerHTML = `<img src="${avatarPath}" class="author-img" style="width:30px;height:30px;border-radius:50%;object-fit:cover;" onerror="this.src='https://via.placeholder.com/30'"> En ligne : ${user.fullname}`;
+        userDisplayName.innerHTML = `<img src="${avatarSrc(user.profile_picture)}" class="author-img" alt=""> ${escapeHtml(user.fullname)}`;
+        if (composerAvatar) composerAvatar.src = avatarSrc(user.profile_picture);
+        if (profilePreviewAvatar) profilePreviewAvatar.src = avatarSrc(user.profile_picture);
+        updateSidebarProfile(user);
         authContainer.classList.add('hidden');
         appContainer.classList.remove('hidden');
         loadTimeline();
         loadFriendsDashboard();
         initializeNotifications();
-        checkAdminStatus(user);
-    }
-
-    function hideApp() {
-        authContainer.classList.remove('hidden');
-        appContainer.classList.add('hidden');
-    }
-
-    const createPostForm = document.getElementById('create-post-form');
-    const postImageInput = document.getElementById('post-image');
-    const fileChosenSpan = document.getElementById('file-chosen');
-    const timelineContainer = document.getElementById('timeline-container');
-
-    if (postImageInput) {
-        postImageInput.addEventListener('change', () => {
-            fileChosenSpan.textContent = postImageInput.files.length > 0 ? postImageInput.files[0].name : 'Aucun fichier choisi';
-        });
-    }
-
-    if (createPostForm) {
-        createPostForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const content = document.getElementById('post-content').value.trim();
-            const imageFile = postImageInput.files[0];
-
-            if (!content && !imageFile) {
-                alert("Votre publication ne peut pas être vide !");
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('content', content);
-            if (imageFile) formData.append('image', imageFile);
-
-            try {
-                const res = await fetch('/api/posts/create', { method: 'POST', body: formData });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Erreur de publication');
-                createPostForm.reset();
-                fileChosenSpan.textContent = 'Aucun fichier choisi';
-                loadTimeline();
-            } catch (err) {
-                alert(err.message);
-            }
-        });
+        if (window.checkAdminStatus) window.checkAdminStatus(user);
     }
 
     async function loadTimeline() {
-
         try {
-            const res = await fetch('/api/posts/timeline');
-            if (!res.ok) throw new Error('Impossible de charger les publications');
-            const posts = await res.json();
-
-            timelineContainer.innerHTML = '';
-
-            if (posts.length === 0) {
-                timelineContainer.innerHTML = '<p class="loading-text">Aucune publication pour le moment. Soyez le premier !</p>';
-                return;
-            }
-
-            for (const post of posts) {
-                const postCard = document.createElement('div');
-                postCard.className = 'post-card';
-
-                const postDate = new Date(post.created_at).toLocaleString('fr-FR', {
-                    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-                });
-
-                const isAuthor = currentUser && currentUser.id === post.user_id;
-                const authorButtonsHtml = isAuthor
-                    ? `<button class="btn-edit-post" data-id="${post.id}">Modifier</button><button class="btn-delete-post" data-id="${post.id}">Supprimer</button>`
-                    : `<button class="btn-add-friend-timeline" data-user-id="${post.user_id}" style="background:#e4e6eb; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:bold;">➕ Ajouter en ami</button>`;
-
-                const imageHtml = post.image ? `<img src="${post.image}" class="post-attached-img" alt="Image">` : '';
-
-                const postAvatarPath = post.profile_picture
-                    ? (post.profile_picture.startsWith('/uploads') ? post.profile_picture : `/uploads/${post.profile_picture}`)
-                    : 'https://via.placeholder.com/40';
-
-                const likeActiveStyle = post.has_liked ? 'style="color: #1877f2; font-weight: bold;"' : '';
-
-                const commRes = await fetch(`/api/posts/comments/${post.id}`);
-                const comments = await commRes.json();
-
-                let commentsHtml = '';
-                comments.forEach(c => {
-                    const isCommentAuthor = currentUser && currentUser.id === c.user_id;
-                    const deleteCommentBtn = isCommentAuthor
-                        ? `<button class="btn-delete-comment" data-id="${c.id}" style="background:none; border:none; color:#ff4d4d; cursor:pointer; font-size:12px; margin-left:auto;">Supprimer</button>`
-                        : '';
-
-                    commentsHtml += `<div class="comment-item" style="display:flex; align-items:center; gap:10px; margin-bottom:8px; background:#f0f2f5; padding:8px; border-radius:6px; font-size:14px;">
-                        <div>
-                            <strong>${c.fullname} :</strong>
-                            <span>${c.content}</span>
-                        </div>
-                        ${deleteCommentBtn}
-                    </div>`;
-                });
-
-                postCard.innerHTML = `
-                    <div class="post-header">
-                        <div class="post-author-info">
-                          <img src="${postAvatarPath}" class="author-img" onerror="this.src='https://via.placeholder.com/40'">
-                            <div>
-                                <div class="author-name">${post.fullname}</div>
-                                <div class="post-date">${postDate}</div>
-                            </div>
-                        </div>
-                        <div class="post-actions-top">${authorButtonsHtml}</div>
-                    </div>
-                    <div class="post-body">
-                        <p>${post.content || ''}</p>
-                        ${imageHtml}
-                    </div>
-                    <div class="post-interactions-bar" style="display:flex; justify-content:space-between; padding:10px 0; border-top:1px solid #e4e6eb; border-bottom:1px solid #e4e6eb; margin-top:10px;">
-                        <button class="btn-like-post" data-id="${post.id}" ${likeActiveStyle}>👍 En cours (<span class="like-count">${post.likes_count}</span>)</button>
-                        <span style="font-size:14px; color:#65676b;">💬 ${post.comments_count} commentaire(s)</span>
-                        <button class="btn-share-post" data-id="${post.id}" style="background:none; border:none; color:#65676b; cursor:pointer; font-weight:650;">↪ Partager (<span class="share-count">${post.shares_count}</span>)</button>
-                    </div>
-                    <div class="comments-list-container" style="margin-top:10px; max-height:200px; overflow-y:auto;">${commentsHtml}</div>
-                    <form class="comment-form" data-id="${post.id}" style="display:flex; gap:10px; margin-top:10px;">
-                        <input type="text" placeholder="Écrire un commentaire..." style="flex-grow:1; padding:6px 10px; border:1px solid #ccd0d5; border-radius:20px; font-size:14px;" required>
-                        <button type="submit" class="btn btn-small" style="padding:4px 12px; font-size:13px;">Envoyer</button>
-                    </form>
-                `;
-
-                timelineContainer.appendChild(postCard);
-            }
-
-            document.querySelectorAll('.btn-delete-post').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const postId = e.target.getAttribute('data-id');
-                    if (confirm('Voulez-vous vraiment supprimer cette publication ?')) {
-                        try {
-                            const deleteRes = await fetch(`/api/posts/${postId}`, { method: 'DELETE' });
-                            if (deleteRes.ok) loadTimeline();
-                        } catch (err) { console.error(err); }
-                    }
-                });
-            });
-
-            document.querySelectorAll('.btn-edit-post').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const postId = e.target.getAttribute('data-id');
-                    const postCard = e.target.closest('.post-card');
-                    const paragraph = postCard.querySelector('.post-body p');
-                    const newContent = prompt('Modifiez votre publication :', paragraph.textContent);
-                    if (newContent !== null && newContent.trim() !== '') {
-                        try {
-                            const updateRes = await fetch(`/api/posts/${postId}`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ content: newContent })
-                            });
-                            if (updateRes.ok) loadTimeline();
-                        } catch (err) { console.error(err); }
-                    }
-                });
-            });
-
-            document.querySelectorAll('.btn-like-post').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const targetBtn = e.target.closest('.btn-like-post');
-                    const postId = targetBtn.getAttribute('data-id');
-                    try {
-                        const likeRes = await fetch(`/api/posts/like/${postId}`, { method: 'POST' });
-                        if (likeRes.ok) loadTimeline();
-                    } catch (err) { console.error(err); }
-                });
-            });
-
-            document.querySelectorAll('.comment-form').forEach(form => {
-                form.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const postId = form.getAttribute('data-id');
-                    const input = form.querySelector('input');
-                    const content = input.value.trim();
-
-                    try {
-                        const commRes = await fetch(`/api/posts/comment/${postId}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ content })
-                        });
-                        if (commRes.ok) {
-                            input.value = '';
-                            loadTimeline();
-                        }
-                    } catch (err) { console.error(err); }
-                });
-            });
-
-            document.querySelectorAll('.btn-delete-comment').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const commentId = e.target.getAttribute('data-id');
-                    if (confirm('Voulez-vous supprimer votre commentaire ?')) {
-                        try {
-                            const delCommRes = await fetch(`/api/posts/comment/${commentId}`, { method: 'DELETE' });
-                            if (delCommRes.ok) loadTimeline();
-                        } catch (err) { console.error(err); }
-                    }
-                });
-            });
-
-            document.querySelectorAll('.btn-share-post').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const postId = e.target.closest('.btn-share-post').getAttribute('data-id');
-                    try {
-                        const shareRes = await fetch(`/api/posts/share/${postId}`, { method: 'POST' });
-                        const data = await shareRes.json();
-                        alert(data.message);
-                        loadTimeline();
-                    } catch (err) { console.error(err); }
-                });
-            });
-
-            document.querySelectorAll('.btn-add-friend-timeline').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const targetUserId = e.target.getAttribute('data-user-id');
-                    sendFriendRequest(targetUserId);
-                });
-            });
-        } catch (err) {
-            timelineContainer.innerHTML = `<p class="loading-text" style="color:red;">${err.message}</p>`;
+            timelineContainer.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div>';
+            const response = await fetch('/api/posts/timeline');
+            if (!response.ok) throw new Error('Impossible de charger le fil.');
+            const posts = await response.json();
+            timelinePostsCache = posts;
+            updatePostCount(posts.filter((post) => Number(post.user_id) === Number(currentUser?.id)).length);
+            renderTimelineFromCache();
+        } catch (error) {
+            timelineContainer.innerHTML = `<p class="empty-state error">${escapeHtml(error.message)}</p>`;
         }
+    }
+
+    async function renderTimelineFromCache() {
+        timelineContainer.innerHTML = '';
+        const posts = getFilteredPosts();
+
+        if (!posts.length) {
+            timelineContainer.innerHTML = `<p class="empty-state">${getEmptyFilterMessage()}</p>`;
+            return;
+        }
+
+        for (const post of posts) {
+            const commentsResponse = await fetch(`/api/posts/comments/${post.id}`);
+            const comments = commentsResponse.ok ? await commentsResponse.json() : [];
+            timelineContainer.appendChild(renderPost(post, comments));
+        }
+    }
+
+    function getFilteredPosts() {
+        const posts = [...timelinePostsCache];
+        if (activeFeedFilter === 'friends') {
+            return posts.filter((post) => friendIdsCache.has(Number(post.user_id)));
+        }
+        if (activeFeedFilter === 'popular') {
+            return posts.sort((a, b) => interactionScore(b) - interactionScore(a));
+        }
+        if (activeFeedFilter === 'recent') {
+            return posts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        }
+        return posts;
+    }
+
+    function interactionScore(post) {
+        return Number(post.likes_count || 0) + Number(post.comments_count || 0) + Number(post.shares_count || 0);
+    }
+
+    function getEmptyFilterMessage() {
+        if (activeFeedFilter === 'friends') return "Aucune publication de vos amis pour le moment.";
+        if (activeFeedFilter === 'popular') return "Aucune publication populaire pour le moment.";
+        return "Aucune publication pour le moment.";
+    }
+
+    function renderPost(post, comments) {
+        const card = document.createElement('article');
+        card.className = 'post-card';
+        const isAuthor = currentUser && Number(currentUser.id) === Number(post.user_id);
+        const date = new Date(post.created_at).toLocaleString('fr-FR');
+
+        card.innerHTML = `
+            <header class="post-header">
+                <div class="post-author-info">
+                    <img src="${avatarSrc(post.profile_picture)}" class="author-img" alt="">
+                    <div>
+                        <strong>${escapeHtml(post.fullname)}</strong>
+                        <span>${date}</span>
+                    </div>
+                </div>
+                <div class="post-menu">
+                    ${isAuthor ? `<button type="button" data-action="edit-post" data-id="${post.id}">Modifier</button><button type="button" data-action="delete-post" data-id="${post.id}">Supprimer</button>` : `<button type="button" data-action="friend-request" data-id="${post.user_id}">Ajouter</button>`}
+                </div>
+            </header>
+            <div class="post-body">
+                ${post.content ? `<p>${escapeHtml(post.content)}</p>` : ''}
+                ${post.image ? `<img src="${post.image}" class="post-attached-img" alt="Image de publication">` : ''}
+            </div>
+            <div class="post-interactions">
+                <button type="button" class="${post.has_liked ? 'active' : ''}" data-action="like" data-id="${post.id}">J'aime (${post.likes_count || 0})</button>
+                <span>${post.comments_count || 0} commentaire(s)</span>
+                <button type="button" data-action="share" data-id="${post.id}">Partager (${post.shares_count || 0})</button>
+            </div>
+            <div class="comments-list">
+                ${comments.map((comment) => `
+                    <div class="comment-item">
+                        <span><strong>${escapeHtml(comment.fullname)}</strong> ${escapeHtml(comment.content)}</span>
+                        ${Number(comment.user_id) === Number(currentUser.id) ? `<button type="button" data-action="delete-comment" data-id="${comment.id}">Supprimer</button>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+            <form class="comment-form" data-id="${post.id}">
+                <input type="text" placeholder="Ecrire un commentaire..." required>
+                <button type="submit" class="btn btn-secondary">Envoyer</button>
+            </form>
+        `;
+
+        card.addEventListener('click', handlePostAction);
+        card.querySelector('.comment-form').addEventListener('submit', handleCommentSubmit);
+        return card;
+    }
+
+    async function handlePostAction(event) {
+        const button = event.target.closest('[data-action]');
+        if (!button) return;
+        const id = button.dataset.id;
+
+        if (button.dataset.action === 'delete-post' && confirm('Supprimer cette publication ?')) {
+            await fetch(`/api/posts/${id}`, { method: 'DELETE' });
+            loadTimeline();
+        }
+
+        if (button.dataset.action === 'edit-post') {
+            const currentText = button.closest('.post-card').querySelector('.post-body p')?.textContent || '';
+            const content = prompt('Modifier la publication :', currentText);
+            if (content && content.trim()) {
+                await fetch(`/api/posts/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: content.trim() })
+                });
+                loadTimeline();
+            }
+        }
+
+        if (button.dataset.action === 'like') {
+            await fetch(`/api/posts/like/${id}`, { method: 'POST' });
+            loadTimeline();
+        }
+
+        if (button.dataset.action === 'share') {
+            const response = await fetch(`/api/posts/share/${id}`, { method: 'POST' });
+            const data = await response.json();
+            alert(data.message || data.error || 'Partage traite.');
+            loadTimeline();
+        }
+
+        if (button.dataset.action === 'friend-request') {
+            await sendFriendRequest(id);
+        }
+
+        if (button.dataset.action === 'delete-comment' && confirm('Supprimer ce commentaire ?')) {
+            await fetch(`/api/posts/comment/${id}`, { method: 'DELETE' });
+            loadTimeline();
+        }
+    }
+
+    async function handleCommentSubmit(event) {
+        event.preventDefault();
+        const form = event.target;
+        const input = form.querySelector('input');
+        await fetch(`/api/posts/comment/${form.dataset.id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: input.value.trim() })
+        });
+        input.value = '';
+        loadTimeline();
     }
 
     async function loadFriendsDashboard() {
+        const container = $('#friends-sidebar-container');
         try {
-            const res = await fetch('/api/friends/dashboard');
-            if (!res.ok) throw new Error('Erreur lors du chargement des amis');
-            const data = await res.json();
-
-            const sidebarContainer = document.getElementById('friends-sidebar-container');
-            if (!sidebarContainer) return;
-
-            let requestsHtml = '<h4 style="margin-top:0; color:#65676b; font-size:14px; text-transform:uppercase;">Demandes reçues</h4>';
-            if (data.requests.length === 0) {
-                requestsHtml += '<p style="color:#65676b; font-size:13px; font-style:italic;">Aucune demande en attente.</p>';
-            } else {
-                data.requests.forEach(req => {
-                    requestsHtml += `<div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; background:#f0f2f5; padding:8px; border-radius:6px;">
-                        <img src="/uploads/${req.profile_picture}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" onerror="this.src='https://via.placeholder.com/32'">
-                        <span style="font-size:13px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100px;">${req.fullname}</span>
-                        <button class="btn-accept-friend" data-id="${req.user_id}" style="background:#1877f2; color:white; border:none; padding:4px 6px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:bold; margin-left:auto;">Oui</button>
-                        <button class="btn-reject-friend" data-id="${req.user_id}" style="background:#e4e6eb; color:#050505; border:none; padding:4px 6px; border-radius:4px; cursor:pointer; font-size:11px;">Non</button>
-                    </div>`;
-                });
+            const response = await fetch('/api/friends/dashboard');
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Relations indisponibles.');
+            friendIdsCache = new Set(data.friends.map((friend) => Number(friend.id)));
+            updateFriendCount(data.friends.length);
+            if (activeFeedFilter === 'friends' && timelinePostsCache.length) {
+                renderTimelineFromCache();
             }
 
-            let friendsListHtml = '<h4 style="margin-top:20px; color:#65676b; font-size:14px; text-transform:uppercase;">Mes Amis</h4>';
-            if (data.friends.length === 0) {
-                friendsListHtml += '<p style="color:#65676b; font-size:13px; font-style:italic;">Vous n\'avez pas encore d\'amis.</p>';
-            } else {
-                data.friends.forEach(friend => {
-                    friendsListHtml += `<div class="friend-item" data-friend-id="${friend.id}" data-friend-name="${friend.fullname}" style="display:flex; align-items:center; gap:10px; margin-bottom:10px; padding:8px; border-radius:6px; cursor:pointer; transition:background 0.2s;">
-                        <img src="/uploads/${friend.profile_picture}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" onerror="this.src='https://via.placeholder.com/32'">
-                        <span style="font-size:14px; font-weight:500;">${friend.fullname}</span>
-                        <button class="btn-remove-friend" data-id="${friend.id}" style="background:none; border:none; color:#ff4d4d; cursor:pointer; font-size:12px; margin-left:auto;">✕</button>
-                    </div>`;
-                });
-            }
-
-            sidebarContainer.innerHTML = `
-                <div style="background:white; padding:15px; border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.1);">
-                    <h3 style="margin-top:0; border-bottom:1px solid #e4e6eb; padding-bottom:8px; font-size:16px; display:flex; align-items:center; gap:8px;">%👫 Relations</h3>
-                    ${requestsHtml}
-                    ${friendsListHtml}
-                </div>
+            container.innerHTML = `
+                <h3>Demandes recues</h3>
+                ${data.requests.length ? data.requests.map((request) => `
+                    <div class="friend-row">
+                        <img src="${avatarSrc(request.profile_picture)}" alt="">
+                        <span>${escapeHtml(request.fullname)}</span>
+                        <button type="button" data-friend-action="accept" data-id="${request.user_id}">OK</button>
+                        <button type="button" data-friend-action="reject" data-id="${request.user_id}">Non</button>
+                    </div>`).join('') : '<p class="muted">Aucune demande.</p>'}
+                <h3>Mes amis</h3>
+                ${data.friends.length ? data.friends.map((friend) => `
+                    <div class="friend-row clickable" data-chat-id="${friend.id}" data-chat-name="${escapeHtml(friend.fullname)}">
+                        <img src="${avatarSrc(friend.profile_picture)}" alt="">
+                        <span>${escapeHtml(friend.fullname)}</span>
+                        <button type="button" data-friend-action="remove" data-id="${friend.id}">Retirer</button>
+                    </div>`).join('') : '<p class="muted">Aucun ami pour le moment.</p>'}
             `;
-
-            document.querySelectorAll('.btn-accept-friend').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const id = e.target.getAttribute('data-id');
-                    const resp = await fetch(`/api/friends/accept/${id}`, { method: 'PUT' });
-                    if (resp.ok) loadFriendsDashboard();
-                });
-            });
-
-            document.querySelectorAll('.btn-reject-friend').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const id = e.target.getAttribute('data-id');
-                    const resp = await fetch(`/api/friends/reject/${id}`, { method: 'DELETE' });
-                    if (resp.ok) loadFriendsDashboard();
-                });
-            });
-
-            document.querySelectorAll('.btn-remove-friend').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    const id = e.target.getAttribute('data-id');
-                    if (confirm('Retirer cet ami ?')) {
-                        const resp = await fetch(`/api/friends/reject/${id}`, { method: 'DELETE' });
-                        if (resp.ok) loadFriendsDashboard();
-                    }
-                });
-            });
-
-            document.querySelectorAll('.friend-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const friendId = item.getAttribute('data-friend-id');
-                    const friendName = item.getAttribute('data-friend-name');
-                    if (window.openChatWithFriend) window.openChatWithFriend(friendId, friendName);
-                });
-            });
-        } catch (err) {
-            console.error(err);
+        } catch (error) {
+            container.innerHTML = `<p class="muted error">${escapeHtml(error.message)}</p>`;
         }
     }
 
-    async function sendFriendRequest(userId) {
-        try {
-            const res = await fetch(`/api/friends/request/${userId}`, { method: 'POST' });
-            const data = await res.json();
-            alert(data.message || data.error);
+    $('#friends-sidebar-container').addEventListener('click', async (event) => {
+        const friendButton = event.target.closest('[data-friend-action]');
+        if (friendButton) {
+            event.stopPropagation();
+            const method = friendButton.dataset.friendAction === 'accept' ? 'PUT' : 'DELETE';
+            const endpoint = friendButton.dataset.friendAction === 'accept' ? 'accept' : 'reject';
+            await fetch(`/api/friends/${endpoint}/${friendButton.dataset.id}`, { method });
             loadFriendsDashboard();
-        } catch (err) {
-            console.error(err);
+            return;
         }
+
+        const chatRow = event.target.closest('[data-chat-id]');
+        if (chatRow && window.openChatWithFriend) {
+            window.openChatWithFriend(chatRow.dataset.chatId, chatRow.dataset.chatName);
+        }
+    });
+
+    async function sendFriendRequest(userId) {
+        const response = await fetch(`/api/friends/request/${userId}`, { method: 'POST' });
+        const data = await response.json();
+        alert(data.message || data.error || 'Demande traitee.');
+        loadFriendsDashboard();
     }
 
     async function initializeNotifications() {
         await loadNotifications();
-
         if (window.socket && !notificationSocketInitialized) {
-            window.socket.on('new_notification', (notification) => {
-                addNotificationToList(notification, true);
-                incrementNotificationCount(1);
-            });
+            window.socket.on('new_notification', () => loadNotifications());
             notificationSocketInitialized = true;
-        }
-
-        if (markAllReadBtn) {
-            markAllReadBtn.addEventListener('click', async () => {
-                try {
-                    const res = await fetch('/api/notifications/read-all', { method: 'PUT' });
-                    if (res.ok) await loadNotifications();
-                } catch (err) {
-                    console.error('Erreur lors du marquage des notifications lues', err);
-                }
-            });
-        }
-
-        if (notificationList) {
-            notificationList.addEventListener('click', async (e) => {
-                const item = e.target.closest('.notification-item');
-                if (!item) return;
-                const notificationId = item.getAttribute('data-notification-id');
-                try {
-                    const res = await fetch(`/api/notifications/read/${notificationId}`, { method: 'PUT' });
-                    if (res.ok) {
-                        item.classList.remove('unread');
-                        await loadNotifications();
-                    }
-                } catch (err) {
-                    console.error('Erreur lors de la lecture de la notification', err);
-                }
-            });
         }
     }
 
     async function loadNotifications() {
-        const notificationListElement = document.getElementById('notification-list');
-        const notificationCountElement = document.getElementById('notification-count');
-        if (!notificationListElement || !notificationCountElement) return;
-
-        try {
-            const res = await fetch('/api/notifications');
-            if (!res.ok) throw new Error('Impossible de charger les notifications');
-            const notifications = await res.json();
-            notificationListElement.innerHTML = '';
-            let unreadCount = 0;
-
-            if (notifications.length === 0) {
-                notificationListElement.innerHTML = '<p style="color:#65676b; font-size:13px;">Aucune notification pour le moment.</p>';
-            } else {
-                notifications.forEach((notification) => {
-                    addNotificationToList(notification, false);
-                    if (!notification.is_read) unreadCount += 1;
-                });
-            }
-
-            notificationCountElement.textContent = unreadCount;
-        } catch (err) {
-            console.error('Erreur lors du chargement des notifications :', err);
-        }
-    }
-
-    function addNotificationToList(notification, prepend = false) {
-        const notificationListElement = document.getElementById('notification-list');
-        if (!notificationListElement) return;
-
-        const item = document.createElement('div');
-        item.className = `notification-item ${notification.is_read ? '' : 'unread'}`;
-        item.setAttribute('data-notification-id', notification.id || '');
-        item.innerHTML = `
-            <div class="notification-content">
-                <strong>${notification.sender_name || 'Quelqu\'un'}</strong>
-                <span>${notification.message || formatNotificationText(notification)}</span>
+        const list = $('#notification-list');
+        const count = $('#notification-count');
+        const response = await fetch('/api/notifications');
+        if (!response.ok) return;
+        const notifications = await response.json();
+        count.textContent = notifications.filter((item) => !item.is_read).length;
+        list.innerHTML = notifications.length ? notifications.map((item) => `
+            <div class="notification-item ${item.is_read ? '' : 'unread'}" data-notification-id="${item.id}">
+                <strong>${escapeHtml(item.sender_name)}</strong>
+                <span>${escapeHtml(formatNotification(item))}</span>
+                <small>${new Date(item.created_at).toLocaleString('fr-FR')}</small>
             </div>
-            <div class="notification-meta">${new Date(notification.created_at).toLocaleString('fr-FR')}</div>
-        `;
-
-        if (prepend) notificationListElement.prepend(item);
-        else notificationListElement.appendChild(item);
+        `).join('') : '<p class="muted">Aucune notification pour le moment.</p>';
     }
 
-    function formatNotificationText(notification) {
-        switch (notification.type) {
-            case 'like':
-                return 'a aimé votre publication.';
-            case 'comment':
-                return 'a commenté votre publication.';
-            case 'friend_request':
-                return 'vous a envoyé une demande d\'ami.';
-            case 'message':
-                return 'vous a envoyé un message.';
-            default:
-                return 'a généré une nouvelle notification.';
+    $('#notification-list').addEventListener('click', async (event) => {
+        const item = event.target.closest('[data-notification-id]');
+        if (!item) return;
+        await fetch(`/api/notifications/read/${item.dataset.notificationId}`, { method: 'PUT' });
+        loadNotifications();
+    });
+
+    function formatNotification(notification) {
+        const labels = {
+            like: "a aime votre publication.",
+            comment: 'a commente votre publication.',
+            friend_request: "vous a envoye une demande d'ami.",
+            message: 'vous a envoye un message.'
+        };
+        return labels[notification.type] || 'a genere une notification.';
+    }
+
+    function wireNavigation() {
+        if (settingsBtn) settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+
+        const profileIds = ['nav-profile-btn', 'mobile-profile-btn'];
+        profileIds.forEach((id) => document.getElementById(id)?.addEventListener('click', () => profileBtn.click()));
+
+        const settingsIds = ['nav-settings-btn'];
+        settingsIds.forEach((id) => document.getElementById(id)?.addEventListener('click', () => settingsBtn.click()));
+
+        document.getElementById('nav-messages-btn')?.addEventListener('click', () => {
+            document.getElementById('chat-box').style.display = 'block';
+        });
+
+        document.getElementById('nav-notifications-btn')?.addEventListener('click', () => {
+            document.getElementById('notification-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+
+        document.getElementById('mobile-search-btn')?.addEventListener('click', () => document.getElementById('search-btn').click());
+        document.getElementById('mobile-compose-btn')?.addEventListener('click', () => document.getElementById('post-content').focus());
+    }
+
+    function applyTheme(theme) {
+        document.documentElement.dataset.theme = theme;
+        localStorage.setItem('theme', theme);
+        const isDark = theme === 'dark';
+        if (themeToggle) {
+            themeToggle.textContent = isDark ? 'Mode clair' : 'Mode sombre';
+            themeToggle.setAttribute('aria-pressed', String(isDark));
         }
     }
 
-    function incrementNotificationCount(delta) {
-        const notificationCountElement = document.getElementById('notification-count');
-        if (!notificationCountElement) return;
-        const current = Number(notificationCountElement.textContent) || 0;
-        notificationCountElement.textContent = current + delta;
+    function updateSidebarProfile(user) {
+        const sidebarProfile = document.getElementById('sidebar-profile');
+        if (!sidebarProfile) return;
+        sidebarProfile.innerHTML = `
+            <img src="${avatarSrc(user.profile_picture)}" alt="" class="author-img elevated">
+            <strong>${escapeHtml(user.fullname)}</strong>
+            <span>${escapeHtml(user.email || 'Profil actif')}</span>
+        `;
+    }
+
+    function updatePostCount(count) {
+        const postStat = document.getElementById('stat-posts');
+        if (postStat) postStat.textContent = count;
+    }
+
+    function updateFriendCount(count) {
+        const friendStat = document.getElementById('stat-friends');
+        if (friendStat) friendStat.textContent = count;
     }
 });
-

@@ -11,7 +11,7 @@ async function ensureTwoUsers() {
     const email = fullname + '@example.com';
     const password = 'test1234';
     const hashed = await bcrypt.hash(password, 10);
-    const [res] = await db.execute('INSERT INTO users (fullname, email, password, profile_picture, role) VALUES (?, ?, ?, ?, ?)', [fullname, email, hashed, '/uploads/default_profile.png', 'user']);
+    const [res] = await db.execute('INSERT INTO users (fullname, email, password, profile_picture, role) VALUES (?, ?, ?, ?, ?)', [fullname, email, hashed, '/images/default-avatar.svg', 'user']);
     ids.push(res.insertId);
   }
   return ids;

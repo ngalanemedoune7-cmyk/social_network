@@ -13,18 +13,32 @@ function notifyUser(userId, notification) {
 
 function broadcastOnlineUsers() {
     if (!io) return;
-    io.emit('update_online_users', Array.from(activeUsers.keys()));
+    io.emit('update_online_users', Array.from(activeUsers.entries()).map(([id, user]) => ({
+        id,
+        fullname: user.fullname
+    })));
 }
 
 function initSocket(socketIo) {
     io = socketIo;
 
     io.on('connection', (socket) => {
-        socket.on('register_user', (userId) => {
-            const normalizedUserId = Number(userId);
-            socket.join(`user_${normalizedUserId}`);
-            activeUsers.set(normalizedUserId, { socketId: socket.id });
-            broadcastOnlineUsers();
+        socket.on('register_user', async (userId) => {
+            try {
+                const normalizedUserId = Number(userId);
+                if (!normalizedUserId) return;
+
+                const user = await User.findById(normalizedUserId);
+                socket.join(`user_${normalizedUserId}`);
+                activeUsers.set(normalizedUserId, {
+                    socketId: socket.id,
+                    fullname: user ? user.fullname : `Utilisateur ${normalizedUserId}`
+                });
+                broadcastOnlineUsers();
+            } catch (error) {
+                console.error('Erreur enregistrement socket utilisateur :', error.message);
+                socket.emit('message_error', { error: 'Connexion temps réel indisponible.' });
+            }
         });
 
         socket.on('send_private_message', async (data) => {
@@ -85,5 +99,5 @@ function initSocket(socketIo) {
 module.exports = {
     initSocket,
     notifyUser,
-    getActiveUsers: () => Array.from(activeUsers.keys())
+    getActiveUsers: () => Array.from(activeUsers.entries()).map(([id, user]) => ({ id, fullname: user.fullname }))
 };

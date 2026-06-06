@@ -178,9 +178,15 @@ exports.updateProfile = async (req, res) => {
         
         const updatedUser = await User.findById(userId);
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             message: "Profil mis à jour avec succès.",
-            user: { id: updatedUser.id, fullname: updatedUser.fullname, email: updatedUser.email, profile_picture: updatedUser.profile_picture }
+            user: {
+                id: updatedUser.id,
+                fullname: updatedUser.fullname,
+                email: updatedUser.email,
+                profile_picture: updatedUser.profile_picture,
+                role: updatedUser.role
+            }
         });
     } catch (error) {
         console.error(error);

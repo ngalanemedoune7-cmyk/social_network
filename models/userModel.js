@@ -6,7 +6,7 @@ const User = {
         
         const [adminCountRows] = await db.execute("SELECT COUNT(*) as count FROM users WHERE role = 'admin'");
         const role = adminCountRows[0].count === 0 ? 'admin' : 'user';
-        const img = profilePicture ? `/uploads/${profilePicture}` : 'default_profile.png';
+        const img = profilePicture ? `/uploads/${profilePicture}` : '/images/default-avatar.svg';
         const sql = 'INSERT INTO users (fullname, email, password, profile_picture, role) VALUES (?, ?, ?, ?, ?)';
         const [result] = await db.execute(sql, [fullname, email, hashedPassword, img, role]);
         return result.insertId;
@@ -21,7 +21,7 @@ const User = {
 
     
     findById: async (id) => {
-        const sql = 'SELECT id, fullname, email, profile_picture, role, created_at FROM users WHERE id = ?';
+        const sql = 'SELECT id, fullname, email, profile_picture, role, bio, created_at FROM users WHERE id = ?';
         const [rows] = await db.execute(sql, [id]);
         return rows[0];
     },

@@ -22,7 +22,7 @@ const bcrypt = require('bcrypt');
     const hashedPassword = await bcrypt.hash(password, 10);
     const [result] = await db.execute(
       'INSERT INTO users (fullname, email, password, profile_picture, role) VALUES (?, ?, ?, ?, ?)',
-      [fullname, email, hashedPassword, '/uploads/default_profile.png', 'admin']
+      [fullname, email, hashedPassword, '/images/default-avatar.svg', 'admin']
     );
 
     console.log('Created dedicated admin account:');

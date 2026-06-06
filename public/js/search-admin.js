@@ -1,264 +1,179 @@
+const htmlEscape = (value = '') => String(value).replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+}[char]));
 
 document.addEventListener('DOMContentLoaded', () => {
     const searchBtn = document.getElementById('search-btn');
-    if (searchBtn) {
-        searchBtn.addEventListener('click', () => {
-            document.getElementById('search-modal').classList.remove('hidden');
-        });
-    }
-
-    const searchInputElement = document.getElementById('searchInput');
-    const searchBtnElement = document.getElementById('searchBtn');
-    
-    if (searchBtnElement) {
-        searchBtnElement.addEventListener('click', performSearch);
-    }
-    
-    if (searchInputElement) {
-        searchInputElement.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') performSearch();
-        });
-    }
-
     const adminBtn = document.getElementById('admin-btn');
-    if (adminBtn) {
-        adminBtn.addEventListener('click', () => {
-            document.getElementById('admin-modal').classList.remove('hidden');
-            loadAdminStatistics();
-        });
-    }
+    const resultsContainer = document.getElementById('search-results');
+
+    searchBtn.addEventListener('click', () => {
+        document.getElementById('search-modal').classList.remove('hidden');
+        document.getElementById('searchInput').focus();
+    });
+
+    document.getElementById('searchBtn').addEventListener('click', performSearch);
+    document.getElementById('searchInput').addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') performSearch();
+    });
+
+    resultsContainer.addEventListener('click', (event) => {
+        const item = event.target.closest('[data-search-user-id]');
+        if (!item || !window.openChatWithFriend) return;
+        window.openChatWithFriend(item.dataset.searchUserId, item.dataset.searchUserName);
+        document.getElementById('search-modal').classList.add('hidden');
+    });
+
+    adminBtn.addEventListener('click', () => {
+        document.getElementById('admin-modal').classList.remove('hidden');
+        switchAdminTab('statistics');
+    });
+
+    document.querySelectorAll('.tab-btn').forEach((button) => {
+        button.addEventListener('click', () => switchAdminTab(button.dataset.tab));
+    });
 });
 
 async function performSearch() {
     const query = document.getElementById('searchInput').value.trim();
+    const resultsContainer = document.getElementById('search-results');
     if (!query) {
-        alert('Veuillez entrer un terme de recherche');
+        resultsContainer.innerHTML = '<p class="muted">Entrez un terme de recherche.</p>';
         return;
     }
 
-    const resultsContainer = document.getElementById('search-results');
-    resultsContainer.innerHTML = '<p>Recherche en cours...</p>';
-
+    resultsContainer.innerHTML = '<div class="skeleton-card"></div>';
     try {
-        
-        const usersRes = await fetch(`/api/search/users?q=${encodeURIComponent(query)}`);
-        const users = await usersRes.json();
+        const [usersResponse, postsResponse] = await Promise.all([
+            fetch(`/api/search/users?q=${encodeURIComponent(query)}`),
+            fetch(`/api/search/posts?q=${encodeURIComponent(query)}`)
+        ]);
+        const users = await usersResponse.json();
+        const posts = await postsResponse.json();
 
-        
-        const postsRes = await fetch(`/api/search/posts?q=${encodeURIComponent(query)}`);
-        const posts = await postsRes.json();
+        const userResults = users.map((user) => `
+            <button type="button" class="search-result-item" data-search-user-id="${user.id}" data-search-user-name="${htmlEscape(user.fullname)}">
+                <img src="${user.profile_picture || '/images/default-avatar.svg'}" alt="" class="search-result-avatar">
+                <span><strong>${htmlEscape(user.fullname)}</strong><small>${htmlEscape(user.email)}</small></span>
+            </button>
+        `).join('');
 
-        resultsContainer.innerHTML = '';
+        const postResults = posts.map((post) => `
+            <article class="search-result-item">
+                <img src="${post.profile_picture || '/images/default-avatar.svg'}" alt="" class="search-result-avatar">
+                <span><strong>${htmlEscape(post.fullname)}</strong><small>${htmlEscape((post.content || '').slice(0, 120))}</small></span>
+            </article>
+        `).join('');
 
-        if (users && users.length > 0) {
-            const userTitle = document.createElement('h3');
-            userTitle.textContent = '👥 Utilisateurs';
-            userTitle.style.marginTop = '20px';
-            userTitle.style.marginBottom = '10px';
-            resultsContainer.appendChild(userTitle);
-
-            users.forEach(user => {
-                const userEl = document.createElement('div');
-                userEl.className = 'search-result-item';
-                userEl.innerHTML = `
-                    <img src="${user.profile_picture || '/images/default-avatar.png'}" alt="${user.fullname}" class="search-result-avatar">
-                    <div class="search-result-info">
-                        <div class="search-result-name">${user.fullname}</div>
-                        <div class="search-result-meta">${user.email}</div>
-                    </div>
-                `;
-                userEl.addEventListener('click', () => {
-                    
-                    if (window.openChatWithFriend) {
-                        window.openChatWithFriend(user.id, user.fullname);
-                    }
-                    document.getElementById('search-modal').classList.add('hidden');
-                });
-                resultsContainer.appendChild(userEl);
-            });
-        }
-
-        if (posts && posts.length > 0) {
-            const postTitle = document.createElement('h3');
-            postTitle.textContent = '📝 Publications';
-            postTitle.style.marginTop = '20px';
-            postTitle.style.marginBottom = '10px';
-            resultsContainer.appendChild(postTitle);
-
-            posts.forEach(post => {
-                const postEl = document.createElement('div');
-                postEl.className = 'search-result-item';
-                postEl.innerHTML = `
-                    <img src="${post.profile_picture || '/images/default-avatar.png'}" alt="${post.fullname}" class="search-result-avatar">
-                    <div class="search-result-info">
-                        <div class="search-result-name">${post.fullname}</div>
-                        <div class="search-result-meta">${post.content.substring(0, 60)}...</div>
-                    </div>
-                `;
-                postEl.addEventListener('click', () => {
-                    
-                    document.getElementById('search-modal').classList.add('hidden');
-                });
-                resultsContainer.appendChild(postEl);
-            });
-        }
-
-        if ((!users || users.length === 0) && (!posts || posts.length === 0)) {
-            resultsContainer.innerHTML = '<p>Aucun résultat trouvé.</p>';
-        }
+        resultsContainer.innerHTML = `
+            ${users.length ? `<h3>Utilisateurs</h3>${userResults}` : ''}
+            ${posts.length ? `<h3>Publications</h3>${postResults}` : ''}
+            ${!users.length && !posts.length ? '<p class="muted">Aucun resultat trouve.</p>' : ''}
+        `;
     } catch (error) {
-        console.error('Erreur lors de la recherche:', error);
-        resultsContainer.innerHTML = '<p>Erreur lors de la recherche. Veuillez réessayer.</p>';
+        resultsContainer.innerHTML = '<p class="muted error">Erreur lors de la recherche.</p>';
     }
 }
 
-
 function switchAdminTab(tabName) {
-    
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.add('hidden');
-    });
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
+    document.querySelectorAll('.tab-content').forEach((tab) => tab.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach((button) => button.classList.toggle('active', button.dataset.tab === tabName));
+    document.getElementById(`${tabName}-tab`).classList.remove('hidden');
 
-    
-    const tabElement = document.getElementById(`${tabName}-tab`);
-    if (tabElement) {
-        tabElement.classList.remove('hidden');
-    }
-
-    
-    event.target.classList.add('active');
-
-    
-    if (tabName === 'users') {
-        loadAdminUsers();
-    }
+    if (tabName === 'statistics') loadAdminStatistics();
+    if (tabName === 'users') loadAdminUsers();
+    if (tabName === 'posts') loadAdminPosts();
 }
 
 async function loadAdminStatistics() {
-    try {
-        const response = await fetch('/api/admin/statistics');
-        if (!response.ok) {
-            console.error('Erreur lors de la récupération des statistiques');
-            return;
-        }
-        
-        const stats = await response.json();
-        const statsGrid = document.getElementById('stats-grid');
-        statsGrid.innerHTML = '';
-
-        const statTypes = [
-            { key: 'totalUsers', label: 'Utilisateurs', class: 'users' },
-            { key: 'totalPosts', label: 'Publications', class: 'posts' },
-            { key: 'totalComments', label: 'Commentaires', class: 'comments' },
-            { key: 'totalLikes', label: 'Likes', class: 'likes' },
-            { key: 'totalMessages', label: 'Messages', class: 'messages' },
-            { key: 'totalNotifications', label: 'Notifications', class: 'notifications' }
-        ];
-
-        statTypes.forEach(stat => {
-            const statCard = document.createElement('div');
-            statCard.className = `stat-card ${stat.class}`;
-            statCard.innerHTML = `
-                <div class="stat-value">${stats[stat.key] || 0}</div>
-                <div class="stat-label">${stat.label}</div>
-            `;
-            statsGrid.appendChild(statCard);
-        });
-    } catch (error) {
-        console.error('Erreur lors du chargement des statistiques:', error);
-    }
+    const response = await fetch('/api/admin/statistics');
+    if (!response.ok) return;
+    const stats = await response.json();
+    const labels = [
+        ['totalUsers', 'Utilisateurs'],
+        ['totalPosts', 'Publications'],
+        ['totalComments', 'Commentaires'],
+        ['totalLikes', 'Likes'],
+        ['totalMessages', 'Messages'],
+        ['totalNotifications', 'Notifications']
+    ];
+    document.getElementById('stats-grid').innerHTML = labels.map(([key, label]) => `
+        <div class="stat-card">
+            <strong>${stats[key] || 0}</strong>
+            <span>${label}</span>
+        </div>
+    `).join('');
 }
 
 async function loadAdminUsers() {
-    try {
-        const response = await fetch('/api/admin/users');
-        if (!response.ok) {
-            console.error('Erreur lors de la récupération des utilisateurs');
-            return;
-        }
-
-        const users = await response.json();
-        const tableBody = document.getElementById('users-table-body');
-        tableBody.innerHTML = '';
-
-        users.forEach(user => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${user.fullname}</td>
-                <td>${user.email}</td>
-                <td>${user.role || 'user'}</td>
-                <td>${new Date(user.created_at).toLocaleDateString('fr-FR')}</td>
-                <td>
-                    ${user.role !== 'admin' ? `<button class="btn-promote-user" onclick="setUserRole(${user.id}, 'admin', '${user.fullname}')">Promouvoir</button>` : '<span style="color:#1877f2;font-weight:600;">Admin</span>'}
-                    <button class="btn-delete-user" onclick="deleteAdminUser(${user.id}, '${user.fullname}')">Supprimer</button>
-                </td>
-            `;
-            tableBody.appendChild(row);
-        });
-    } catch (error) {
-        console.error('Erreur lors du chargement des utilisateurs:', error);
-    }
+    const response = await fetch('/api/admin/users');
+    if (!response.ok) return;
+    const users = await response.json();
+    document.getElementById('users-table-body').innerHTML = users.map((user) => `
+        <tr>
+            <td>${htmlEscape(user.fullname)}</td>
+            <td>${htmlEscape(user.email)}</td>
+            <td>${htmlEscape(user.role || 'user')}</td>
+            <td>${new Date(user.created_at).toLocaleDateString('fr-FR')}</td>
+            <td>
+                ${user.role === 'admin' ? '<span class="pill">Admin</span>' : `<button type="button" onclick="setUserRole(${user.id}, 'admin')">Promouvoir</button>`}
+                <button type="button" class="danger-link" onclick="deleteAdminUser(${user.id})">Supprimer</button>
+            </td>
+        </tr>
+    `).join('');
 }
 
-async function deleteAdminUser(userId, userName) {
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${userName}" ?`)) {
-        return;
-    }
-
-    try {
-        const response = await fetch(`/api/admin/users/${userId}`, {
-            method: 'DELETE'
-        });
-
-        if (!response.ok) {
-            alert('Erreur lors de la suppression de l\'utilisateur');
-            return;
-        }
-
-        alert('Utilisateur supprimé avec succès');
-        loadAdminUsers();
-    } catch (error) {
-        console.error('Erreur lors de la suppression:', error);
-        alert('Erreur lors de la suppression');
-    }
+async function loadAdminPosts() {
+    const response = await fetch('/api/admin/posts');
+    if (!response.ok) return;
+    const posts = await response.json();
+    document.getElementById('moderation-container').innerHTML = posts.length ? posts.map((post) => `
+        <article class="moderation-item">
+            <div>
+                <strong>${htmlEscape(post.fullname)}</strong>
+                <small>${new Date(post.created_at).toLocaleString('fr-FR')}</small>
+                <p>${htmlEscape((post.content || '').slice(0, 220))}</p>
+            </div>
+            <button type="button" class="danger-link" onclick="deleteAdminPost(${post.id})">Supprimer</button>
+        </article>
+    `).join('') : '<p class="muted">Aucune publication.</p>';
 }
 
-async function setUserRole(userId, role, userName) {
-    if (!confirm(`Confirmer la promotion de ${userName} en administrateur ?`)) {
-        return;
+async function deleteAdminUser(userId) {
+    if (!confirm('Supprimer cet utilisateur ?')) return;
+    const response = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+    if (!response.ok) {
+        const data = await response.json();
+        alert(data.error || 'Suppression impossible.');
     }
-
-    try {
-        const response = await fetch(`/api/admin/users/${userId}/role`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ role })
-        });
-
-        if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.error || 'Erreur lors de la promotion');
-        }
-
-        alert('Utilisateur promu administrateur avec succès.');
-        loadAdminUsers();
-    } catch (error) {
-        console.error('Erreur lors de la promotion:', error);
-        alert(error.message);
-    }
+    loadAdminUsers();
 }
 
+async function setUserRole(userId, role) {
+    if (!confirm('Promouvoir cet utilisateur ?')) return;
+    const response = await fetch(`/api/admin/users/${userId}/role`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role })
+    });
+    if (!response.ok) {
+        const data = await response.json();
+        alert(data.error || 'Promotion impossible.');
+    }
+    loadAdminUsers();
+}
 
-function checkAdminStatus(user) {
+async function deleteAdminPost(postId) {
+    if (!confirm('Supprimer cette publication ?')) return;
+    await fetch(`/api/admin/posts/${postId}`, { method: 'DELETE' });
+    loadAdminPosts();
+}
+
+window.checkAdminStatus = function (user) {
     const adminBtn = document.getElementById('admin-btn');
-    if (adminBtn) {
-        if (user && user.role === 'admin') {
-            adminBtn.style.display = 'block';
-        } else {
-            adminBtn.style.display = 'none';
-        }
-    }
-}
+    adminBtn.style.display = user && user.role === 'admin' ? 'inline-flex' : 'none';
+};

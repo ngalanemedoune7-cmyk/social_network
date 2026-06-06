@@ -3,203 +3,289 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Social_Network</title>
+    <meta name="description" content="Application de reseau social dynamique avec Node.js, MySQL et Socket.IO.">
+    <title>Social Network</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+    <main id="auth-container" class="auth-shell">
+        <section class="brand-panel" aria-labelledby="brand-title">
+            <span class="brand-mark" aria-hidden="true">SN</span>
+            <p class="eyebrow">Projet JavaScript, Node.js et MySQL</p>
+            <h1 id="brand-title">Social Network</h1>
+            <p>Publiez, discutez, trouvez vos amis et suivez vos notifications en temps reel dans une interface moderne et fluide.</p>
+            <div class="auth-preview" aria-hidden="true">
+                <div class="preview-card large"></div>
+                <div class="preview-card medium"></div>
+                <div class="preview-card small"></div>
+            </div>
+        </section>
 
-    <div id="auth-container" class="container">
-        <div class="auth-box">
-            <h2>Connexion</h2>
+        <section class="auth-box glass-card" aria-label="Authentification">
             <form id="login-form">
-                <div class="form-group">
-                    <label for="login-email">Email</label>
-                    <input type="email" id="login-email" required>
-                </div>
-                <div class="form-group">
-                    <label for="login-password">Mot de passe</label>
-                    <input type="password" id="login-password" required>
-                </div>
-                <button type="submit" class="btn">Se connecter</button>
+                <h2>Connexion</h2>
+                <p class="section-subtitle">Retrouvez votre fil, vos messages et vos notifications.</p>
+                <label for="login-email">Email</label>
+                <input type="email" id="login-email" autocomplete="email" required>
+                <label for="login-password">Mot de passe</label>
+                <input type="password" id="login-password" autocomplete="current-password" required>
+                <button type="submit" class="btn btn-primary">Se connecter</button>
+                <p class="toggle-text">Pas encore de compte ? <button type="button" id="show-register">S'inscrire</button></p>
             </form>
-            <p class="toggle-text">Pas encore de compte ? <span id="show-register">S'inscrire</span></p>
-        </div>
 
-        <div class="auth-box hidden" id="register-box">
-            <h2>Inscription</h2>
-            <form id="register-form">
-                <div class="form-group">
-                    <label for="reg-avatar">Photo de profil (Optionnel)</label>
-                    <input type="file" id="reg-avatar" accept="image/*">
-                </div>
-                <div class="form-group">
-                    <label for="reg-fullname">Nom complet</label>
-                    <input type="text" id="reg-fullname" required>
-                </div>
-                <div class="form-group">
-                    <label for="reg-email">Email</label>
-                    <input type="email" id="reg-email" required>
-                </div>
-                <div class="form-group">
-                    <label for="reg-password">Mot de passe</label>
-                    <input type="password" id="reg-password" required>
-                </div>
-                <button type="submit" class="btn">S'inscrire</button>
+            <form id="register-form" class="hidden">
+                <h2>Inscription</h2>
+                <p class="section-subtitle">Creez votre profil et rejoignez la communaute.</p>
+                <label for="reg-avatar">Photo de profil</label>
+                <input type="file" id="reg-avatar" accept="image/*">
+                <label for="reg-fullname">Nom complet</label>
+                <input type="text" id="reg-fullname" autocomplete="name" required>
+                <label for="reg-email">Email</label>
+                <input type="email" id="reg-email" autocomplete="email" required>
+                <label for="reg-password">Mot de passe</label>
+                <input type="password" id="reg-password" autocomplete="new-password" minlength="4" required>
+                <button type="submit" class="btn btn-primary">Creer le compte</button>
+                <p class="toggle-text">Deja un compte ? <button type="button" id="show-login">Se connecter</button></p>
             </form>
-            <p class="toggle-text">Déjà un compte ? <span id="show-login">Se connecter</span></p>
-        </div>
-    </div>
+        </section>
+    </main>
 
-    <div id="app-container" class="hidden">
-        <div class="header-bar" style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-bottom: 20px;">
-            <h1 style="margin: 0;">Social Network</h1>
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <button id="search-btn" class="btn" style="background: #e4e6eb; color: #1877f2; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold;">🔍 Recherche</button>
-                <button id="profile-btn" class="btn" style="background: #e4e6eb; color: #1877f2; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold;">👤 Profil</button>
-                <button id="admin-btn" class="btn hidden-admin" style="background: #e4e6eb; color: #1877f2; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold; display: none;">⚙️ Admin</button>
-                <span id="user-display-name"></span>
-                <button id="logout-btn" class="btn btn-danger" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Déconnexion</button>
-            </div>
-        </div>
+    <main id="app-container" class="app-shell hidden">
+        <header class="topbar glass-card">
+            <a class="app-logo" href="/" aria-label="Accueil Social Network">
+                <span class="brand-mark small" aria-hidden="true">SN</span>
+                <span>Social Network</span>
+            </a>
+            <label class="top-search" for="quick-search">
+                <span aria-hidden="true">Search</span>
+                <input id="quick-search" type="search" placeholder="Rechercher utilisateurs, hashtags, posts">
+            </label>
+            <nav class="top-actions" aria-label="Actions principales">
+                <button id="theme-toggle" class="icon-btn" type="button" aria-pressed="false">Mode sombre</button>
+                <button id="search-btn" class="icon-btn" type="button">Recherche</button>
+                <button id="profile-btn" class="icon-btn" type="button">Profil</button>
+                <button id="settings-btn" class="icon-btn" type="button">Parametres</button>
+                <button id="admin-btn" class="icon-btn hidden-admin" type="button">Admin</button>
+                <span id="user-display-name" class="current-user"></span>
+                <button id="logout-btn" class="btn btn-danger" type="button">Deconnexion</button>
+            </nav>
+        </header>
 
-        <div class="main-layout" style="display: flex; gap: 20px; align-items: flex-start;">
-            <div class="left-column" style="flex: 2; min-width: 0;">
-                <div class="form-container" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-bottom: 20px;">
-                    <form id="create-post-form">
-                        <h3 style="margin-top: 0;">Exprimer vous, qu'avez-vous en tête ?</h3>
-                        <textarea id="post-content" placeholder="Partagez quelque chose..." style="width: 100%; height: 80px; padding: 10px; border: 1px solid #ccd0d5; border-radius: 6px; resize: none; box-sizing: border-box; font-family: inherit;"></textarea>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-                            <label class="btn-upload" style="background: #e4e6eb; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px;">
-                                📷 Ajouter une image
-                                <input type="file" id="post-image" accept="image/*" style="display: none;">
-                            </label>
-                            <span id="file-chosen" style="font-size: 13px; color: #65676b; margin-left: 10px; flex-grow: 1;">Aucun fichier choisi</span>
-                            <button type="submit" class="btn btn-primary" style="background: #1877f2; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">Publier</button>
+        <section class="layout">
+            <aside class="sidebar-left glass-card" aria-label="Navigation sociale">
+                <nav class="nav-stack">
+                    <button class="nav-item active" type="button">Accueil</button>
+                    <button class="nav-item" type="button" id="nav-profile-btn">Profil</button>
+                    <button class="nav-item" type="button" id="nav-messages-btn">Messages</button>
+                    <button class="nav-item" type="button" id="nav-notifications-btn">Notifications</button>
+                    <button class="nav-item" type="button" id="nav-settings-btn">Parametres</button>
+                </nav>
+                <section class="mini-profile">
+                    <div class="profile-cover"></div>
+                    <div id="sidebar-profile" class="mini-profile-body">
+                        <img src="/images/default-avatar.svg" alt="" class="author-img elevated">
+                        <strong>Bienvenue</strong>
+                        <span>Connectez-vous pour voir votre profil.</span>
+                    </div>
+                    <div class="profile-stats" aria-label="Statistiques profil">
+                        <span><strong id="stat-posts">0</strong> posts</span>
+                        <span><strong id="stat-friends">0</strong> amis</span>
+                    </div>
+                </section>
+                <section class="relations-card">
+                    <div class="section-heading">
+                        <h2>Relations</h2>
+                    </div>
+                    <div id="friends-sidebar-container"></div>
+                </section>
+            </aside>
+
+            <section class="feed-column" aria-label="Fil d'actualite">
+                <form id="create-post-form" class="composer glass-card">
+                    <div class="composer-header">
+                        <img src="/images/default-avatar.svg" class="author-img" alt="" id="composer-avatar">
+                        <div>
+                            <h2>Nouvelle publication</h2>
+                            <span>Texte, image, discussion ou idee rapide.</span>
                         </div>
-                    </form>
+                    </div>
+                    <textarea id="post-content" placeholder="Quoi de neuf aujourd'hui ?" rows="4" aria-label="Contenu de la publication"></textarea>
+                    <div class="composer-actions">
+                        <label class="upload-btn" for="post-image">Ajouter une image</label>
+                        <input type="file" id="post-image" accept="image/*">
+                        <span id="file-chosen">Aucun fichier choisi</span>
+                        <button type="submit" class="btn btn-primary">Publier</button>
+                    </div>
+                </form>
+
+                <div class="feed-filter glass-card" aria-label="Filtres du fil">
+                    <button class="chip active" type="button" data-feed-filter="all">Pour vous</button>
+                    <button class="chip" type="button" data-feed-filter="friends">Amis</button>
+                    <button class="chip" type="button" data-feed-filter="popular">Populaire</button>
+                    <button class="chip" type="button" data-feed-filter="recent">Recent</button>
                 </div>
-                <div id="timeline-container"></div>
-            </div>
 
-            <div class="right-column" style="flex: 1; max-width: 360px; position: sticky; top: 20px;">
-                <div id="friends-sidebar-container"></div>
+                <div id="timeline-container" class="timeline">
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                </div>
+            </section>
 
-                <div id="notification-panel" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-top: 20px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                        <h3 style="margin:0; color:#1877f2; font-size:16px;">🔔 Notifications</h3>
+            <aside class="right-rail" aria-label="Informations secondaires">
+                <section id="notification-panel" class="glass-card panel">
+                    <div class="panel-heading">
+                        <h2>Notifications</h2>
                         <span id="notification-count" class="notification-badge">0</span>
                     </div>
-                    <div id="notification-list" style="max-height: 260px; overflow-y: auto; display:flex; flex-direction:column; gap:8px;">
-                        <p style="color: #65676b; font-size: 13px;">Aucune notification pour le moment.</p>
+                    <div id="notification-list" class="notification-list">
+                        <p class="muted">Aucune notification pour le moment.</p>
                     </div>
-                    <button id="mark-all-read" class="btn btn-secondary" style="margin-top:12px; width:100%;">Tout marquer lu</button>
-                </div>
+                    <button id="mark-all-read" class="btn btn-outline" type="button">Tout marquer lu</button>
+                </section>
 
-                
-                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-top: 20px;">
-                    <h3 style="margin-top: 0; margin-bottom: 15px; color: #1877f2;">👥 Utilisateurs en ligne</h3>
-                    <div id="online-users-list" style="max-height: 400px; overflow-y: auto;">
-                        <p style="color: #65676b; font-size: 13px;">Aucun utilisateur en ligne</p>
+                <section class="glass-card panel">
+                    <div class="panel-heading">
+                        <h2>Tendances</h2>
+                        <span class="pill">Live</span>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                    <div class="trend-list">
+                        <article><strong>#NodeJS</strong><span>Architecture MVC</span></article>
+                        <article><strong>#SocketIO</strong><span>Temps reel</span></article>
+                        <article><strong>#MySQL</strong><span>Donnees relationnelles</span></article>
+                    </div>
+                </section>
 
-    <div id="chat-box" class="chat-box">
-        <div class="chat-header" onclick="document.getElementById('chat-box').style.display='none'">
-            Chat Privé ✖
-        </div>
+                <section class="glass-card panel">
+                    <h2>En ligne</h2>
+                    <div id="online-users-list" class="online-list">
+                        <p class="muted">Aucun utilisateur en ligne.</p>
+                    </div>
+                </section>
+            </aside>
+        </section>
+
+        <nav class="mobile-nav glass-card" aria-label="Navigation mobile">
+            <button class="active" type="button">Accueil</button>
+            <button id="mobile-search-btn" type="button">Recherche</button>
+            <button id="mobile-compose-btn" type="button">Publier</button>
+            <button id="mobile-profile-btn" type="button">Profil</button>
+        </nav>
+    </main>
+
+    <section id="chat-box" class="chat-box glass-card" aria-label="Chat prive">
+        <button class="chat-header" type="button">Chat prive x</button>
         <div id="messages-container" class="messages-container"></div>
-        <input type="text" id="chat-input" class="chat-input" placeholder="Écrire un message...">
-    </div>
+        <div id="emoji-panel" class="emoji-panel hidden" aria-label="Selection emoji">
+            <button type="button" data-emoji="🙂">🙂</button>
+            <button type="button" data-emoji="😂">😂</button>
+            <button type="button" data-emoji="❤️">❤️</button>
+            <button type="button" data-emoji="🔥">🔥</button>
+            <button type="button" data-emoji="👍">👍</button>
+            <button type="button" data-emoji="👏">👏</button>
+            <button type="button" data-emoji="🎉">🎉</button>
+            <button type="button" data-emoji="💬">💬</button>
+        </div>
+        <div class="chat-tools">
+            <button id="emoji-btn" type="button" aria-label="Ajouter emoji">Emoji</button>
+            <button id="file-btn" type="button" aria-label="Ajouter piece jointe">Fichier</button>
+            <input id="chat-file-input" class="hidden" type="file" aria-label="Choisir un fichier">
+        </div>
+        <input type="text" id="chat-input" class="chat-input" placeholder="Ecrire un message...">
+    </section>
 
-    
-    <div id="profile-modal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close-modal" onclick="document.getElementById('profile-modal').classList.add('hidden')">&times;</span>
-            <h2>Modifier mon profil</h2>
+    <div id="profile-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="profile-title">
+        <section class="modal-content">
+            <button class="close-modal" type="button" data-close="profile-modal" aria-label="Fermer">&times;</button>
+            <div class="profile-hero">
+                <div class="profile-cover"></div>
+                <img id="profile-preview-avatar" src="/images/default-avatar.svg" class="profile-avatar-large" alt="">
+            </div>
+            <h2 id="profile-title">Modifier mon profil</h2>
             <form id="profile-form">
-                <div class="form-group">
-                    <label for="profile-fullname">Nom complet</label>
-                    <input type="text" id="profile-fullname" required>
-                </div>
-                <div class="form-group">
-                    <label for="profile-email">Email</label>
-                    <input type="email" id="profile-email" required>
-                </div>
-                <div class="form-group">
-                    <label for="profile-avatar">Photo de profil</label>
-                    <input type="file" id="profile-avatar" accept="image/*">
-                </div>
-                <div class="form-group">
-                    <label for="profile-current-password">Mot de passe actuel</label>
-                    <input type="password" id="profile-current-password" placeholder="Laisser vide si inchangé">
-                </div>
-                <div class="form-group">
-                    <label for="profile-new-password">Nouveau mot de passe</label>
-                    <input type="password" id="profile-new-password" placeholder="Laisser vide si inchangé">
-                </div>
-                <div class="form-group">
-                    <label for="profile-confirm-password">Confirmer le nouveau mot de passe</label>
-                    <input type="password" id="profile-confirm-password" placeholder="Confirmer le nouveau mot de passe">
-                </div>
+                <label for="profile-fullname">Nom complet</label>
+                <input type="text" id="profile-fullname" required>
+                <label for="profile-email">Email</label>
+                <input type="email" id="profile-email" required>
+                <label for="profile-avatar">Photo de profil</label>
+                <input type="file" id="profile-avatar" accept="image/*">
+                <label for="profile-current-password">Mot de passe actuel</label>
+                <input type="password" id="profile-current-password" placeholder="Si vous changez le mot de passe">
+                <label for="profile-new-password">Nouveau mot de passe</label>
+                <input type="password" id="profile-new-password" placeholder="Optionnel">
+                <label for="profile-confirm-password">Confirmer le nouveau mot de passe</label>
+                <input type="password" id="profile-confirm-password" placeholder="Optionnel">
                 <button type="submit" class="btn btn-primary">Enregistrer</button>
             </form>
-        </div>
+        </section>
     </div>
 
-    
-    <div id="search-modal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close-modal" onclick="document.getElementById('search-modal').classList.add('hidden')">&times;</span>
-            <h2>Recherche</h2>
+    <div id="search-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="search-title">
+        <section class="modal-content">
+            <button class="close-modal" type="button" data-close="search-modal" aria-label="Fermer">&times;</button>
+            <h2 id="search-title">Recherche</h2>
             <div class="search-container">
-                <input type="text" id="searchInput" placeholder="Rechercher un utilisateur ou une publication...">
-                <button id="searchBtn" class="btn">Rechercher</button>
+                <input type="text" id="searchInput" placeholder="Utilisateur, hashtag ou publication" aria-label="Recherche">
+                <button id="searchBtn" class="btn btn-primary" type="button">Rechercher</button>
             </div>
             <div id="search-results" class="search-results"></div>
-        </div>
+        </section>
     </div>
 
-    
-    <div id="admin-modal" class="modal hidden">
-        <div class="modal-content admin-content">
-            <span class="close-modal" onclick="document.getElementById('admin-modal').classList.add('hidden')">&times;</span>
-            <h2>Administration</h2>
-            
-            <div class="admin-tabs">
-                <button class="tab-btn active" onclick="switchAdminTab('statistics')">Statistiques</button>
-                <button class="tab-btn" onclick="switchAdminTab('users')">Utilisateurs</button>
-                <button class="tab-btn" onclick="switchAdminTab('posts')">Modération</button>
+    <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <section class="modal-content">
+            <button class="close-modal" type="button" data-close="settings-modal" aria-label="Fermer">&times;</button>
+            <h2 id="settings-title">Parametres</h2>
+            <div class="settings-grid">
+                <article class="settings-card">
+                    <h3>Compte</h3>
+                    <p>Informations personnelles et profil public.</p>
+                </article>
+                <article class="settings-card">
+                    <h3>Securite</h3>
+                    <p>Mot de passe et sessions.</p>
+                </article>
+                <article class="settings-card">
+                    <h3>Confidentialite</h3>
+                    <p>Relations, messages et visibilite.</p>
+                </article>
+                <article class="settings-card">
+                    <h3>Apparence</h3>
+                    <button id="settings-theme-toggle" class="btn btn-secondary" type="button">Basculer le theme</button>
+                </article>
             </div>
+        </section>
+    </div>
 
-            
+    <div id="admin-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="admin-title">
+        <section class="modal-content admin-content">
+            <button class="close-modal" type="button" data-close="admin-modal" aria-label="Fermer">&times;</button>
+            <h2 id="admin-title">Administration</h2>
+            <div class="admin-tabs" role="tablist">
+                <button class="tab-btn active" type="button" data-tab="statistics">Statistiques</button>
+                <button class="tab-btn" type="button" data-tab="users">Utilisateurs</button>
+                <button class="tab-btn" type="button" data-tab="posts">Moderation</button>
+            </div>
             <div id="statistics-tab" class="tab-content">
                 <div class="stats-grid" id="stats-grid"></div>
             </div>
-
-            
             <div id="users-tab" class="tab-content hidden">
                 <table class="admin-table">
                     <thead>
                         <tr>
                             <th>Nom</th>
                             <th>Email</th>
-                            <th>Rôle</th>
+                            <th>Role</th>
                             <th>Inscription</th>
-                            <th>Action</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="users-table-body"></tbody>
                 </table>
             </div>
-
-            
             <div id="posts-tab" class="tab-content hidden">
                 <div id="moderation-container"></div>
             </div>
-        </div>
+        </section>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>

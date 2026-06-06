@@ -49,7 +49,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/', viewRoutes);
 
 app.get('/', (req, res) => {
-    res.redirect('/posts/timeline');
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 

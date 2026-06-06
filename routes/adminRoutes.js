@@ -6,6 +6,7 @@ const { isLoggedIn } = require('../middleware/auth');
 router.get('/users', isLoggedIn, adminController.getAllUsers);
 router.put('/users/:userId/role', isLoggedIn, adminController.updateUserRole);
 router.delete('/users/:userId', isLoggedIn, adminController.deleteUser);
+router.get('/posts', isLoggedIn, adminController.getAllPosts);
 router.delete('/posts/:postId', isLoggedIn, adminController.deletePost);
 router.get('/statistics', isLoggedIn, adminController.getStatistics);
 

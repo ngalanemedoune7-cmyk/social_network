@@ -69,6 +69,19 @@ exports.deletePost = async (req, res) => {
     }
 };
 
+exports.getAllPosts = async (req, res) => {
+    try {
+        if (!(await isAdmin(req))) {
+            return res.status(403).json({ error: 'Accès refusé. Vous devez être administrateur.' });
+        }
+        const posts = await Admin.getAllPosts();
+        return res.status(200).json(posts);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: 'Erreur lors de la récupération des publications.' });
+    }
+};
+
 exports.getStatistics = async (req, res) => {
     try {
         if (!(await isAdmin(req))) {

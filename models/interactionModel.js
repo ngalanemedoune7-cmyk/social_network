@@ -8,7 +8,7 @@ const Interaction = {
         return rows.length > 0;
     },
     addLike: async (postId, userId) => {
-        await db.execute('INSERT INTO likes (post_id, user_id) VALUES (?, ?)', [postId, userId]);
+        await db.execute('INSERT IGNORE INTO likes (post_id, user_id) VALUES (?, ?)', [postId, userId]);
     },
     removeLike: async (postId, userId) => {
         await db.execute('DELETE FROM likes WHERE post_id = ? AND user_id = ?', [postId, userId]);
@@ -41,7 +41,7 @@ const Interaction = {
 
     
     addShare: async (postId, userId) => {
-        await db.execute('INSERT INTO shares (post_id, user_id) VALUES (?, ?)', [postId, userId]);
+        await db.execute('INSERT IGNORE INTO shares (post_id, user_id) VALUES (?, ?)', [postId, userId]);
     }
 };
 

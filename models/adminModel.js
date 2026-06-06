@@ -19,6 +19,17 @@ const Admin = {
         return result.affectedRows > 0;
     },
 
+    getAllPosts: async () => {
+        const sql = `
+            SELECT p.id, p.content, p.image, p.created_at, u.fullname, u.email
+            FROM posts p
+            JOIN users u ON p.user_id = u.id
+            ORDER BY p.created_at DESC
+        `;
+        const [rows] = await db.execute(sql);
+        return rows;
+    },
+
     updateUserRole: async (userId, role) => {
         const sql = 'UPDATE users SET role = ? WHERE id = ?';
         const [result] = await db.execute(sql, [role, userId]);
